@@ -7,20 +7,68 @@
 <!-- |    four-wheeled robot for ROS 2 users.                                     | -->
 <!-- ===========================================================================  -->
 <robot name="swerve_robot" xmlns:xacro="http://ros.org/wiki/xacro">
-<xacro:property name="body_length" value="0.75"/>
-<xacro:property name="body_width" value="0.75"/>
-<xacro:property name="body_height" value="0.25"/>
-<xacro:property name="body_mass" value="1."/>
-<!-- Wheel-center spacing along the body X and Y axes (m). -->
-<xacro:property name="wheelbase" value="0.75"/>
-<xacro:property name="track_width" value="0.75"/>
-<xacro:property name="wheel_radius" value="0.2"/>
-<xacro:property name="wheel_width" value="0.1"/>
-<xacro:property name="wheel_mass" value="0.5"/>
-<!-- Scan plane clearance above the body and wheel tops (m); wheel centers are at body_link height. -->
+<!-- Simplified indoor research platform; SI units. This is not a replica of a commercial robot.
+     Size references: Jackal uses a 0.098 m wheel radius; Ranger Mini provides a 4WS layout.
+     https://docs.clearpathrobotics.com/docs/ros/config/yaml/platform/extras/
+     https://github.com/agilexrobotics/ranger_ros2/blob/humble/ranger_base/include/ranger_base/ranger_params.hpp
+     Masses, motor limits, damping and friction below are simulation assumptions, not measured hardware data. -->
+<xacro:property name="body_length" value="0.60"/>
+<xacro:property name="body_width" value="0.40"/>
+<xacro:property name="body_height" value="0.16"/>
+<!-- Equivalent box mass/inertia includes the chassis, battery and fixed wheel-support arms. -->
+<xacro:property name="body_mass" value="20.0"/>
+<xacro:property name="body_ground_clearance" value="0.10"/>
+<xacro:property name="body_center_height" value="${body_ground_clearance + body_height/2}"/>
+
+<!-- Ground-plane wheel-center spacing; the steering axes pass through the wheel centers. -->
+<xacro:property name="wheelbase" value="0.70"/>
+<xacro:property name="track_width" value="0.62"/>
+<xacro:property name="wheel_radius" value="0.10"/>
+<xacro:property name="wheel_width" value="0.05"/>
+<xacro:property name="wheel_mass" value="0.80"/>
+<!-- Simplified U-shaped steering fork, with clearance around the rolling wheel. -->
+<xacro:property name="steering_mass" value="0.50"/>
+<xacro:property name="fork_length" value="0.06"/>
+<xacro:property name="fork_thickness" value="0.012"/>
+<xacro:property name="fork_side_clearance" value="0.01"/>
+<xacro:property name="fork_top_thickness" value="0.02"/>
+<xacro:property name="fork_top_clearance" value="0.015"/>
+<xacro:property name="fork_width" value="${wheel_width + 2*(fork_side_clearance + fork_thickness)}"/>
+<xacro:property name="drive_joint_drop" value="${wheel_radius + fork_top_clearance + fork_top_thickness/2}"/>
+<xacro:property name="steering_pivot_height" value="${wheel_radius + drive_joint_drop}"/>
+<xacro:property name="mount_arm_width" value="0.04"/>
+<xacro:property name="mount_arm_height" value="0.02"/>
+<xacro:property name="mount_bearing_height" value="0.005"/>
+<xacro:property name="mount_bearing_radius" value="0.012"/>
+<xacro:property name="steering_damping" value="0.10"/>
+<xacro:property name="drive_damping" value="0.05"/>
+<xacro:property name="steering_effort_limit" value="8.0"/>
+<xacro:property name="drive_effort_limit" value="3.0"/>
+<xacro:property name="steering_velocity_limit" value="${pi}"/>
+<!-- Wheel rim speed limit: 0.8 m/s. Actual acceleration limits belong to the future controller. -->
+<xacro:property name="max_wheel_linear_speed" value="0.80"/>
+<xacro:property name="velocity_limit" value="${max_wheel_linear_speed / wheel_radius}"/>
+
+<!-- UST-10LX-sized housing only; the simulated 360-degree scan is not a UST-10LX sensor model.
+     https://www.hokuyo-usa.com/application/files/6716/8451/4574/Hokuyo_-_UST-10LX_-_Spec_Sheet_-_Final.pdf -->
+<xacro:property name="lidar_length" value="0.05"/>
+<xacro:property name="lidar_width" value="0.05"/>
+<xacro:property name="lidar_height" value="0.07"/>
+<xacro:property name="lidar_mass" value="0.13"/>
+<xacro:property name="lidar_mount_radius" value="0.015"/>
+<xacro:property name="lidar_mount_mass" value="0.05"/>
+<!-- Keep the scan plane above the body, wheel modules and camera, with a physical support below it. -->
 <xacro:property name="lidar_scan_clearance" value="0.05"/>
-<xacro:property name="effort_limit" value="1."/>
-<xacro:property name="velocity_limit" value="5."/>
+<xacro:property name="mount_arm_top" value="${steering_pivot_height + fork_top_thickness/2 + mount_bearing_height + mount_arm_height}"/>
+<xacro:property name="lidar_scan_height" value="${max(body_center_height + body_height/2, 2*wheel_radius, mount_arm_top) + lidar_scan_clearance}"/>
+<xacro:property name="lidar_mount_height" value="${lidar_scan_height - lidar_height/2 - (body_center_height + body_height/2)}"/>
+
+<!-- D435-sized housing only (X depth, Y width, Z height); simulation remains a single RGB camera.
+     https://www.realsenseai.com/products/stereo-depth-camera-d435/ -->
+<xacro:property name="camera_depth" value="0.025"/>
+<xacro:property name="camera_width" value="0.090"/>
+<xacro:property name="camera_height" value="0.025"/>
+<xacro:property name="camera_mass" value="0.075"/>
 
 <!-- Absolute path to the ros2_control controller configuration.                -->
 <!-- Passed in from the launch file (resolved from the package share dir).      -->
@@ -47,6 +95,12 @@
 			</geometry>
 		</collision>
 
+		<!-- Fixed support arms are part of the chassis; only the forks below them steer. -->
+		<xacro:wheel_mount_geometry x_pos="${wheelbase/2}" y_pos="${track_width/2}"/>
+		<xacro:wheel_mount_geometry x_pos="${wheelbase/2}" y_pos="${-track_width/2}"/>
+		<xacro:wheel_mount_geometry x_pos="${-wheelbase/2}" y_pos="${track_width/2}"/>
+		<xacro:wheel_mount_geometry x_pos="${-wheelbase/2}" y_pos="${-track_width/2}"/>
+
 		<inertial>
 			<origin xyz="0. 0. 0."/>
 			<mass value="${body_mass}"/>
@@ -57,37 +111,26 @@
 	</link>
 
 	<link name="front_marker_link">
+		<!-- Visual direction label; its negligible mass is included in body_mass. -->
 		<visual>
 			<geometry>
-				<box size="0.05 0.05 0.05"/>
+				<box size="0.06 0.03 0.002"/>
 			</geometry>
 			<material name="Red">
 				<color rgba="1. 0. 0. 1."/>
 			</material>
 		</visual>
-
-		<collision>
-			<geometry>
-				<box size="0.05 0.05 0.05"/>
-			</geometry>
-		</collision>
-
-		<inertial>
-			<origin xyz="0. 0. 0."/>
-			<mass value="1.e-6"/>
-			<inertia ixx="1.e-6" ixy="0." ixz="0." iyy="1.e-6" iyz="0." izz="1.e-6"/>
-		</inertial>
 	</link>
 
 	<joint name="base_to_body_joint" type="fixed">
-		<origin xyz="0 0 ${wheel_radius}" rpy="0 0 0"/>
+		<!-- base_link stays at ground level when all four wheels touch a flat floor. -->
+		<origin xyz="0 0 ${body_center_height}" rpy="0 0 0"/>
 		<parent link="base_link"/>
 		<child link="body_link"/>
-		<dynamics damping="0." friction="0."/>
 	</joint>
 
 	<joint name="front_marker_joint" type="fixed">
-		<origin xyz="${body_length/2 - 0.02} 0. ${body_height/2 - 0.02}" rpy="0. 0. 0."/>
+		<origin xyz="${body_length/2 - 0.06} 0 ${body_height/2 + 0.001}" rpy="0 0 0"/>
 		<parent link="body_link"/>
 		<child link="front_marker_link"/>
 	</joint>
@@ -96,9 +139,10 @@
 	<xacro:wheel_macro suffix="front_right" parent="body_link" x_pos="${wheelbase/2}" y_pos="${-track_width/2}"/>
 	<xacro:wheel_macro suffix="rear_left" parent="body_link" x_pos="${-wheelbase/2}" y_pos="${track_width/2}"/>
 	<xacro:wheel_macro suffix="rear_right" parent="body_link" x_pos="${-wheelbase/2}" y_pos="${-track_width/2}"/>
-	<xacro:camera_macro prefix="camera" parent="body_link" xyz="${body_length/2} 0. ${body_height/2}"/>
+	<xacro:camera_macro prefix="camera" parent="body_link"
+		xyz="${body_length/2 + camera_depth} 0 ${body_height/2 - camera_height/2}"/>
 	<xacro:laser_macro prefix="lidar" parent="body_link"
-		xyz="0 0 ${max(body_height/2, wheel_radius) + lidar_scan_clearance}" rpy="0 0 0"/>
+		xyz="0 0 ${lidar_scan_height - body_center_height}" rpy="0 0 0"/>
 
 	<!-- ros2_control: a single system aggregating all 8 wheel joints. -->
 	<ros2_control name="GazeboSimSystem" type="system">
@@ -126,7 +170,7 @@
 			<always_on>1</always_on>
 			<update_rate>50</update_rate>
 			<topic>imu</topic>
-			<gz_frame_id>body_link</gz_frame_id>
+			<frame_id>body_link</frame_id>
 			<imu>
 				<angular_velocity>
 					<x><noise type="gaussian"><mean>0.</mean><stddev>1.e-3</stddev></noise></x>

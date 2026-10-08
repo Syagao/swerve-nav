@@ -8,17 +8,71 @@
 <!-- ===========================================================================  -->
 <robot xmlns:xacro="http://ros.org/wiki/xacro">
 
+	<!-- Matching primitive visuals/collisions keep the wheel hardware inexpensive to simulate. -->
+	<xacro:macro name="wheel_box_geometry" params="xyz rpy size">
+		<visual>
+			<origin xyz="${xyz}" rpy="${rpy}"/>
+			<geometry><box size="${size}"/></geometry>
+			<material name="WheelHardware"><color rgba="0.25 0.30 0.35 1"/></material>
+		</visual>
+		<collision>
+			<origin xyz="${xyz}" rpy="${rpy}"/>
+			<geometry><box size="${size}"/></geometry>
+		</collision>
+	</xacro:macro>
+
+	<!-- Emitted inside body_link; arm and bearing masses are included in body_mass. -->
+	<xacro:macro name="wheel_mount_geometry" params="x_pos y_pos">
+		<xacro:property name="anchor_x" value="${(body_length/2 - 0.04) * (1 if x_pos > 0 else -1)}"/>
+		<xacro:property name="anchor_y" value="${(body_width/2 - 0.04) * (1 if y_pos > 0 else -1)}"/>
+		<xacro:property name="arm_length" value="${sqrt((x_pos-anchor_x)**2 + (y_pos-anchor_y)**2)}"/>
+		<xacro:property name="arm_yaw" value="${atan2(y_pos-anchor_y, x_pos-anchor_x)}"/>
+		<xacro:wheel_box_geometry
+			xyz="${(x_pos+anchor_x)/2} ${(y_pos+anchor_y)/2} ${mount_arm_top - mount_arm_height/2 - body_center_height}"
+			rpy="0 0 ${arm_yaw}" size="${arm_length} ${mount_arm_width} ${mount_arm_height}"/>
+		<visual>
+			<origin xyz="${x_pos} ${y_pos} ${steering_pivot_height + fork_top_thickness/2 + mount_bearing_height/2 - body_center_height}"/>
+			<geometry><cylinder radius="${mount_bearing_radius}" length="${mount_bearing_height}"/></geometry>
+			<material name="WheelHardware"/>
+		</visual>
+		<collision>
+			<origin xyz="${x_pos} ${y_pos} ${steering_pivot_height + fork_top_thickness/2 + mount_bearing_height/2 - body_center_height}"/>
+			<geometry><cylinder radius="${mount_bearing_radius}" length="${mount_bearing_height}"/></geometry>
+		</collision>
+	</xacro:macro>
+
 	<!-- Kinematic/visual description of one wheel (steering link + drive link). -->
 	<xacro:macro name="wheel_macro" params="suffix parent x_pos y_pos">
-		<!-- Simplified steering carrier: only the drive wheel has contact geometry. -->
+		<!-- Uniform-density three-box fork; inertia includes the parallel-axis terms. -->
+		<xacro:property name="fork_arm_height" value="${drive_joint_drop}"/>
+		<xacro:property name="fork_arm_y" value="${wheel_width/2 + fork_side_clearance + fork_thickness/2}"/>
+		<xacro:property name="fork_arm_z" value="${-(fork_top_thickness + fork_arm_height)/2}"/>
+		<xacro:property name="fork_top_volume" value="${fork_length * fork_width * fork_top_thickness}"/>
+		<xacro:property name="fork_arm_volume" value="${fork_length * fork_thickness * fork_arm_height}"/>
+		<xacro:property name="fork_top_mass" value="${steering_mass * fork_top_volume / (fork_top_volume + 2*fork_arm_volume)}"/>
+		<xacro:property name="fork_arm_mass" value="${(steering_mass - fork_top_mass)/2}"/>
+		<xacro:property name="fork_com_z" value="${2*fork_arm_mass * fork_arm_z / steering_mass}"/>
 		<link name="${suffix}_link1">
-			<!-- Temporary carrier inertia uses the same cylinder approximation as the wheel. -->
+			<xacro:wheel_box_geometry xyz="0 0 0" rpy="0 0 0"
+				size="${fork_length} ${fork_width} ${fork_top_thickness}"/>
+			<xacro:wheel_box_geometry xyz="0 ${fork_arm_y} ${fork_arm_z}" rpy="0 0 0"
+				size="${fork_length} ${fork_thickness} ${fork_arm_height}"/>
+			<xacro:wheel_box_geometry xyz="0 ${-fork_arm_y} ${fork_arm_z}" rpy="0 0 0"
+				size="${fork_length} ${fork_thickness} ${fork_arm_height}"/>
+			<!-- Axle is visual only; wheel collision already represents a solid tire and hub. -->
+			<visual>
+				<origin xyz="0 0 ${-drive_joint_drop}" rpy="${-pi/2} 0 0"/>
+				<geometry><cylinder radius="0.006" length="${fork_width}"/></geometry>
+				<material name="WheelHardware"/>
+			</visual>
 			<inertial>
-				<origin xyz="0. 0. 0." rpy="-${pi/2} 0. 0."/>
-				<mass value="${wheel_mass}"/>
-				<inertia ixx="${wheel_mass * (wheel_radius**2 / 4 + wheel_width**2 / 12)}" ixy="0." ixz="0."
-						 iyy="${wheel_mass * (wheel_radius**2 / 4 + wheel_width**2 / 12)}" iyz="0."
-						 izz="${wheel_mass * wheel_radius**2 / 2}"/>
+				<origin xyz="0 0 ${fork_com_z}"/>
+				<mass value="${steering_mass}"/>
+				<inertia
+					ixx="${fork_top_mass * ((fork_width**2 + fork_top_thickness**2)/12 + fork_com_z**2) + 2*fork_arm_mass * ((fork_thickness**2 + fork_arm_height**2)/12 + fork_arm_y**2 + (fork_arm_z-fork_com_z)**2)}"
+					iyy="${fork_top_mass * ((fork_length**2 + fork_top_thickness**2)/12 + fork_com_z**2) + 2*fork_arm_mass * ((fork_length**2 + fork_arm_height**2)/12 + (fork_arm_z-fork_com_z)**2)}"
+					izz="${fork_top_mass * (fork_length**2 + fork_width**2)/12 + 2*fork_arm_mass * ((fork_length**2 + fork_thickness**2)/12 + fork_arm_y**2)}"
+					ixy="0" ixz="0" iyz="0"/>
 			</inertial>
 		</link>
 
@@ -31,6 +85,17 @@
 				<material name="Black">
 					<color rgba="0. 0. 0. 1."/>
 				</material>
+			</visual>
+			<!-- Thin visual-only stripes make rolling visible on an otherwise symmetric cylinder. -->
+			<visual>
+				<origin xyz="0 ${wheel_width/2 + 0.0005} ${wheel_radius/2}"/>
+				<geometry><box size="0.012 0.001 ${wheel_radius * 0.85}"/></geometry>
+				<material name="WheelRotationMarker"><color rgba="1 0.65 0.05 1"/></material>
+			</visual>
+			<visual>
+				<origin xyz="0 ${-wheel_width/2 - 0.0005} ${wheel_radius/2}"/>
+				<geometry><box size="0.012 0.001 ${wheel_radius * 0.85}"/></geometry>
+				<material name="WheelRotationMarker"/>
 			</visual>
 			<collision>
 				<origin xyz="0. 0. 0." rpy="-${pi/2} 0. 0."/>
@@ -50,26 +115,27 @@
 
 		<!-- joint1: steering (position controlled) -->
 		<joint name="${suffix}_joint1" type="continuous">
-			<origin xyz="${x_pos} ${y_pos} 0." rpy="0. 0. 0."/>
+			<origin xyz="${x_pos} ${y_pos} ${steering_pivot_height - body_center_height}" rpy="0 0 0"/>
 			<axis xyz="0. 0. 1."/>
 			<parent link="${parent}"/>
 			<child link="${suffix}_link1"/>
-			<dynamics damping="1." friction="0."/>
+			<limit effort="${steering_effort_limit}" velocity="${steering_velocity_limit}"/>
+			<dynamics damping="${steering_damping}" friction="0"/>
 		</joint>
 
 		<!-- joint2: drive (velocity controlled) -->
 		<joint name="${suffix}_joint2" type="continuous">
-			<origin xyz="0. 0. 0." rpy="0. 0. 0."/>
+			<origin xyz="0 0 ${-drive_joint_drop}" rpy="0 0 0"/>
 			<axis xyz="0. 1. 0."/>
 			<parent link="${suffix}_link1"/>
 			<child link="${suffix}_link2"/>
-			<dynamics damping="1." friction="0."/>
+			<limit effort="${drive_effort_limit}" velocity="${velocity_limit}"/>
+			<dynamics damping="${drive_damping}" friction="0"/>
 		</joint>
 
 		<gazebo reference="${suffix}_link2">
 			<mu1 value="0.80"/>
 			<mu2 value="0.80"/>
-			<material>Gazebo/Black</material>
 		</gazebo>
 	</xacro:macro>
 

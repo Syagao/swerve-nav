@@ -8,12 +8,7 @@
 <!-- ===========================================================================  -->
 <robot xmlns:xacro="http://ros.org/wiki/xacro">
 	<xacro:macro name="laser_macro" params="parent prefix xyz rpy">
-		<!-- Generic simulation housing: assumed dimensions (m) and mass (kg), not hardware specifications. -->
-		<xacro:property name="lidar_length" value="0.05"/>
-		<xacro:property name="lidar_width" value="0.05"/>
-		<xacro:property name="lidar_height" value="0.07"/>
-		<xacro:property name="lidar_mass" value="0.1"/>
-		<!-- The link origin is the scan center; the mounting bracket is omitted. -->
+		<!-- Physical parameters are centralized in robot.urdf.xacro. The origin is the scan center. -->
 		<link name="${prefix}_link">
 			<collision>
 				<origin xyz="0. 0. 0." rpy="0. 0. 0."/>
@@ -30,6 +25,11 @@
 					<color rgba="0.5 0.5 0.5 1."/>
 				</material>
 			</visual>
+			<visual>
+				<origin xyz="0 0 0"/>
+				<geometry><box size="${lidar_length + 0.001} ${lidar_width + 0.001} 0.02"/></geometry>
+				<material name="LidarWindow"><color rgba="0.08 0.10 0.12 1"/></material>
+			</visual>
 			<inertial>
 				<mass value="${lidar_mass}"/>
 				<origin xyz="0. 0. 0." rpy="0. 0. 0."/>
@@ -43,6 +43,28 @@
 			<origin xyz="${xyz}" rpy="${rpy}"/>
 			<parent link="${parent}"/>
 			<child link="${prefix}_link"/>
+		</joint>
+
+		<!-- A fixed pedestal fills the gap from the chassis roof to the sensor housing. -->
+		<link name="${prefix}_mount_link">
+			<visual>
+				<geometry><cylinder radius="${lidar_mount_radius}" length="${lidar_mount_height}"/></geometry>
+				<material name="LidarMount"><color rgba="0.25 0.30 0.35 1"/></material>
+			</visual>
+			<collision>
+				<geometry><cylinder radius="${lidar_mount_radius}" length="${lidar_mount_height}"/></geometry>
+			</collision>
+			<inertial>
+				<mass value="${lidar_mount_mass}"/>
+				<inertia ixx="${lidar_mount_mass * (3*lidar_mount_radius**2 + lidar_mount_height**2)/12}"
+					iyy="${lidar_mount_mass * (3*lidar_mount_radius**2 + lidar_mount_height**2)/12}"
+					izz="${lidar_mount_mass * lidar_mount_radius**2/2}" ixy="0" ixz="0" iyz="0"/>
+			</inertial>
+		</link>
+		<joint name="${prefix}_mount_joint" type="fixed">
+			<parent link="${prefix}_link"/>
+			<child link="${prefix}_mount_link"/>
+			<origin xyz="0 0 ${-lidar_height/2 - lidar_mount_height/2}"/>
 		</joint>
 
 		<!-- gz GPU lidar. Handled by gz-sim-sensors-system and bridged to ROS    -->

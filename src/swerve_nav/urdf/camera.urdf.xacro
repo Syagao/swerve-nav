@@ -8,7 +8,30 @@
 <!-- ===========================================================================  -->
 <robot xmlns:xacro="http://ros.org/wiki/xacro">
   <xacro:macro name="camera_macro" params="parent prefix xyz">
-	<link name="${prefix}_link"/>
+	<!-- camera_link is at the front imaging plane; the housing extends backward along -X. -->
+	<link name="${prefix}_link">
+	  <visual>
+		<origin xyz="${-camera_depth/2} 0 0"/>
+		<geometry><box size="${camera_depth} ${camera_width} ${camera_height}"/></geometry>
+		<material name="CameraHousing"><color rgba="0.15 0.18 0.22 1"/></material>
+	  </visual>
+	  <visual>
+		<origin xyz="0.0005 0 0" rpy="0 ${pi/2} 0"/>
+		<geometry><cylinder radius="0.007" length="0.001"/></geometry>
+		<material name="CameraLens"><color rgba="0.1 0.35 0.7 1"/></material>
+	  </visual>
+	  <collision>
+		<origin xyz="${-camera_depth/2} 0 0"/>
+		<geometry><box size="${camera_depth} ${camera_width} ${camera_height}"/></geometry>
+	  </collision>
+	  <inertial>
+		<origin xyz="${-camera_depth/2} 0 0"/>
+		<mass value="${camera_mass}"/>
+		<inertia ixx="${camera_mass * (camera_width**2 + camera_height**2)/12}"
+			iyy="${camera_mass * (camera_depth**2 + camera_height**2)/12}"
+			izz="${camera_mass * (camera_depth**2 + camera_width**2)/12}" ixy="0" ixz="0" iyz="0"/>
+	  </inertial>
+	</link>
 
 	<joint name="${prefix}_joint" type="fixed">
 	  <parent link="${parent}"/>
