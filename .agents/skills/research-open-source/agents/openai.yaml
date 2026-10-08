@@ -1,0 +1,7 @@
+interface:
+  display_name: "调研开源实现"
+  short_description: "在编码前搜索并比较成熟开源实现，评估兼容性、维护状态与许可证风险"
+  default_prompt: "使用 $research-open-source 在修改当前项目之前调研并比较成熟的开源实现。"
+
+policy:
+  allow_implicit_invocation: false

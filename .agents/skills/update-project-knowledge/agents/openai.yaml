@@ -1,0 +1,7 @@
+interface:
+  display_name: "更新项目知识库"
+  short_description: "检查本次工作并按需更新项目中长期有效的结构化知识文档"
+  default_prompt: "使用 $update-project-knowledge 检查本次项目工作，并仅在必要时更新已有知识库。"
+
+policy:
+  allow_implicit_invocation: false

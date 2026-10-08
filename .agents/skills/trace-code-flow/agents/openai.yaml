@@ -1,0 +1,8 @@
+
+interface:
+  display_name: "追踪代码流程"
+  short_description: "快速分析指定功能的调用链、数据流、状态和单位"
+  default_prompt: "使用 $trace-code-flow 追踪我指定功能从入口到最终输出的完整代码流程。"
+
+policy:
+  allow_implicit_invocation: false

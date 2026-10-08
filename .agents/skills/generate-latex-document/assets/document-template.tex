@@ -1,0 +1,318 @@
+
+\documentclass[12pt,a4paper]{article}
+
+% ============================================================
+% 中文技术文档模板
+% 建议在 Overleaf 中使用 XeLaTeX 编译
+% ============================================================
+
+\usepackage[UTF8]{ctex}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{tcolorbox}
+\usepackage{setspace}
+\usepackage{url}
+\usepackage{hyperref}
+
+\tcbuselibrary{skins,breakable}
+
+% ============================================================
+% 页面设置
+% ============================================================
+
+\geometry{
+    a4paper,
+    left=2.5cm,
+    right=2.5cm,
+    top=2.5cm,
+    bottom=2.5cm
+}
+
+\onehalfspacing
+\setlength{\parindent}{2em}
+\setlength{\parskip}{0.3em}
+\setlength{\emergencystretch}{2em}
+
+\setlist[itemize]{
+    itemsep=0.2em,
+    topsep=0.4em
+}
+
+\setlist[enumerate]{
+    itemsep=0.2em,
+    topsep=0.4em
+}
+
+\setcounter{tocdepth}{2}
+\setcounter{secnumdepth}{3}
+
+% ============================================================
+% 文档信息占位符
+% ============================================================
+
+\newcommand{\doctitle}{CODEXDOCUMENTTITLE}
+\newcommand{\docsubtitle}{CODEXDOCUMENTSUBTITLE}
+\newcommand{\projectname}{CODEXPROJECTNAME}
+\newcommand{\docauthor}{CODEXDOCUMENTAUTHOR}
+\newcommand{\docversion}{CODEXDOCUMENTVERSION}
+\newcommand{\docdescription}{CODEXDOCUMENTDESCRIPTION}
+
+% ============================================================
+% 颜色
+% ============================================================
+
+\definecolor{primaryblue}{RGB}{35,85,145}
+\definecolor{secondaryblue}{RGB}{65,105,170}
+\definecolor{codebg}{RGB}{247,248,250}
+\definecolor{codeframe}{RGB}{205,210,218}
+\definecolor{codegreen}{RGB}{40,130,80}
+\definecolor{codegray}{RGB}{110,115,125}
+\definecolor{codepurple}{RGB}{145,70,165}
+\definecolor{warningorange}{RGB}{210,125,30}
+\definecolor{softgray}{RGB}{245,245,245}
+
+% ============================================================
+% 页眉页脚
+% ============================================================
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\doctitle}
+\fancyhead[R]{\small\leftmark}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% ============================================================
+% 标题格式
+% ============================================================
+
+\titleformat{\section}
+    {\Large\bfseries\color{primaryblue}}
+    {\thesection}
+    {1em}
+    {}
+    [\titlerule]
+
+\titleformat{\subsection}
+    {\large\bfseries\color{secondaryblue}}
+    {\thesubsection}
+    {1em}
+    {}
+
+\titleformat{\subsubsection}
+    {\normalsize\bfseries}
+    {\thesubsubsection}
+    {1em}
+    {}
+
+% ============================================================
+% 表格
+% ============================================================
+
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\renewcommand{\arraystretch}{1.25}
+
+% ============================================================
+% 代码样式
+% ============================================================
+
+\lstdefinestyle{codestyle}{
+    backgroundcolor=\color{codebg},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{primaryblue}\bfseries,
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=8pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=4,
+    frame=single,
+    rulecolor=\color{codeframe},
+    columns=fullflexible
+}
+
+\lstdefinestyle{commandstyle}{
+    backgroundcolor=\color{codebg},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeframe},
+    numbers=none,
+    columns=fullflexible
+}
+
+\lstdefinelanguage{json}{
+    basicstyle=\ttfamily\footnotesize,
+    string=[s]{"}{"},
+    stringstyle=\color{codepurple},
+    comment=[l]{//},
+    commentstyle=\color{codegreen},
+    keywords={true,false,null},
+    keywordstyle=\color{primaryblue}\bfseries
+}
+
+\lstset{style=codestyle}
+
+% ============================================================
+% 信息框
+% ============================================================
+
+\newtcolorbox{infobox}[2][]{
+    enhanced,
+    breakable,
+    colback=blue!4!white,
+    colframe=primaryblue,
+    fonttitle=\bfseries,
+    title={#2},
+    #1
+}
+
+\newtcolorbox{warningbox}[2][]{
+    enhanced,
+    breakable,
+    colback=orange!5!white,
+    colframe=warningorange,
+    fonttitle=\bfseries,
+    title={#2},
+    #1
+}
+
+\newtcolorbox{filebox}[2][]{
+    enhanced,
+    breakable,
+    colback=softgray,
+    colframe=gray!65!black,
+    fonttitle=\bfseries\ttfamily,
+    title={文件：#2},
+    #1
+}
+
+\newtcolorbox{functionbox}[2][]{
+    enhanced,
+    breakable,
+    colback=blue!2!white,
+    colframe=secondaryblue,
+    fonttitle=\bfseries\ttfamily,
+    title={函数：#2},
+    #1
+}
+
+\newtcolorbox{qabox}[2][]{
+    enhanced,
+    breakable,
+    colback=blue!4!white,
+    colframe=primaryblue,
+    fonttitle=\bfseries,
+    title={问题：#2},
+    #1
+}
+
+\newtcolorbox{answerbox}[1][]{
+    enhanced,
+    breakable,
+    colback=green!4!white,
+    colframe=green!55!black,
+    leftrule=4pt,
+    #1
+}
+
+% ============================================================
+% 行内代码
+% ============================================================
+
+\newcommand{\code}[1]{\texttt{\detokenize{#1}}}
+
+% ============================================================
+% 超链接
+% ============================================================
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=primaryblue,
+    urlcolor=primaryblue,
+    citecolor=green!50!black,
+    bookmarks=true,
+    bookmarksnumbered=true,
+    pdftitle={\doctitle},
+    pdfauthor={\docauthor}
+}
+
+% ============================================================
+% 文档正文
+% ============================================================
+
+\begin{document}
+
+% ============================================================
+% 封面
+% ============================================================
+
+\begin{titlepage}
+    \centering
+    \vspace*{2.8cm}
+
+    {\Huge\bfseries\color{primaryblue}\doctitle\par}
+
+    \vspace{0.7cm}
+
+    {\Large\docsubtitle\par}
+
+    \vspace{2cm}
+
+    \rule{\linewidth}{0.6mm}
+
+    \vspace{1cm}
+
+    \begin{tabular}{rl}
+        \textbf{项目或主题：} & \projectname \\[0.6em]
+        \textbf{作者：} & \docauthor \\[0.6em]
+        \textbf{日期：} & \today \\[0.6em]
+        \textbf{版本：} & \docversion
+    \end{tabular}
+
+    \vspace{1cm}
+
+    \rule{\linewidth}{0.6mm}
+
+    \vfill
+
+    \begin{minipage}{0.85\textwidth}
+        \centering
+        \small
+        \docdescription
+    \end{minipage}
+\end{titlepage}
+
+% ============================================================
+% 目录
+% ============================================================
+
+\tableofcontents
+\newpage
+
+% ============================================================
+% 正文占位符
+% ============================================================
+
+CODEXDOCUMENTBODY
+
+\end{document}

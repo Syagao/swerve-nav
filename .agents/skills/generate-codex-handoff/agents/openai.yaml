@@ -1,0 +1,4 @@
+interface:
+  display_name: "生成 Codex 任务交接"
+  short_description: "将当前任务整理为可直接粘贴到新 Codex 对话的交接提示词"
+  default_prompt: "使用 $generate-codex-handoff 总结当前任务上下文，并生成可直接粘贴到新 Codex 对话的交接提示词。"

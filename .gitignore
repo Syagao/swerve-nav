@@ -1,0 +1,18 @@
+# Project files remain trackable: .agents/, .cursor/rules/, docs/, src/, AGENTS.md.
+
+# ROS 2 workspace build outputs and runtime files
+/build/
+/install/
+/log/
+/.runtime/
+
+# Local reference repositories and Codex settings
+/REF/
+/.codex/
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Windows download metadata
+*:Zone.Identifier

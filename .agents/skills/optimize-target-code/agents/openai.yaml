@@ -1,0 +1,8 @@
+
+interface:
+  display_name: "优化指定代码"
+  short_description: "分析并优化指定函数或文件，并用测试和基准验证改进效果"
+  default_prompt: "使用 $optimize-target-code 分析指定函数或文件，建立基线并实施可验证的最小优化。"
+
+policy:
+  allow_implicit_invocation: false

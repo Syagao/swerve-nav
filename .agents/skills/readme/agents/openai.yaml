@@ -1,0 +1,7 @@
+interface:
+  display_name: "维护项目 README"
+  short_description: "依据真实代码和配置创建、审查或更新准确可执行的README"
+  default_prompt: "使用 $readme 检查当前项目，并根据真实代码和配置创建或更新 README。"
+
+policy:
+  allow_implicit_invocation: false

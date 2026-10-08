@@ -1,0 +1,8 @@
+
+interface:
+  display_name: "补充代码注释"
+  short_description: "为指定代码补充简洁注释并整理方法内部多余空行"
+  default_prompt: "使用 $add-code-comments 为我指定的代码补充准确、简洁的中文注释，并整理局部多余空行。"
+
+policy:
+  allow_implicit_invocation: false

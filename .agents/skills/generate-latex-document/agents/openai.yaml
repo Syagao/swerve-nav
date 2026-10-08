@@ -1,0 +1,7 @@
+interface:
+  display_name: "生成 LaTeX 技术文档"
+  short_description: "使用内置模板整理笔记或生成结构化代码库说明文档"
+  default_prompt: "使用 $generate-latex-document 根据输入资料或当前代码库生成完整的 LaTeX 技术文档。"
+
+policy:
+  allow_implicit_invocation: false

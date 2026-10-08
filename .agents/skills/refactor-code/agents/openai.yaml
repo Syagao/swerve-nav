@@ -1,0 +1,4 @@
+interface:
+  display_name: "重构代码"
+  short_description: "在保持现有行为不变的前提下，清理冗余并改善代码结构与可读性"
+  default_prompt: "使用 $refactor-code 重构指定范围的代码，保持外部行为不变，简化逻辑和职责划分，并执行必要的回归验证。"

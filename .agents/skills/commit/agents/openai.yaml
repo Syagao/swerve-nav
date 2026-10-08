@@ -1,0 +1,7 @@
+interface:
+  display_name: "提交 Git 改动"
+  short_description: "检查当前仓库改动，生成提交信息并安全完成提交和推送"
+  default_prompt: "使用 $commit 检查当前项目的 Git 改动，生成合适的提交信息并提交推送。"
+
+policy:
+  allow_implicit_invocation: false
