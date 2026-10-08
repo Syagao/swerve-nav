@@ -18,9 +18,9 @@
 | 仿真器 | Gazebo Jetty / Gazebo Sim 10 |
 | GPU | NVIDIA RTX 4060 Laptop GPU |
 | 图形工具 | 用户已说明 RViz 和 Gazebo 可正常运行 |
-| 开发语言 | C++17 及以上，具体标准遵循 ROS 2 与依赖要求 |
+| 开发语言 | 本项目自有 C++ 代码统一采用 C++20，包含独立算法库；见 [D-004](DECISIONS.md) |
 
-本次只读确认：本机 `/opt/ros/lyrical/share/ament_cmake_ros_core/cmake/ament_ros_defaults.cmake` 声明 `cxx_std_20`。因此后续连接该 ROS 默认目标时应满足 C++20；独立算法库的具体构建设置仍在实施时确认。本次未重新核验完整环境、安装依赖或运行仿真。
+已只读确认：本机 `/opt/ros/lyrical/share/ament_cmake_ros_core/cmake/ament_ros_defaults.cmake` 声明 `cxx_std_20`。用户于 2026-10-08 明确要求本项目统一使用 C++20；后续自有构建目标按该标准配置。当前尚无自有 ROS 包或 C++ 构建目标，此项为已确定的开发约定，尚无对应编译验证结果。
 
 ## 当前目录与边界
 

@@ -19,7 +19,7 @@
 
 编写、审查或重构代码前，必须读取并遵循 [Karpathy 准则](.cursor/rules/karpathy-guidelines.mdc)。该文件是用户指定的规范来源，核心为：先明确假设，选择最小方案，仅修改相关内容，用可观察结果验证。
 
-开发以 C++17 及以上为主，具体标准遵循目标 ROS 2 与依赖要求，不把用户的下限误写成固定 C++17。当前环境信息见 [`docs/OVERVIEW.md`](docs/OVERVIEW.md)。
+本项目自有 C++ 代码统一采用 C++20，包括 ROS 节点、控制器、导航插件和独立算法库；后续创建或调整构建目标时统一按 C++20 配置。该约定由用户于 2026-10-08 明确确定，见 [`docs/DECISIONS.md`](docs/DECISIONS.md) 的 D-004；当前环境信息见 [`docs/OVERVIEW.md`](docs/OVERVIEW.md)。
 
 ## 资料与知识库使用
 

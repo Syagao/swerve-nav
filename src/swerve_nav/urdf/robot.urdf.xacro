@@ -1,0 +1,152 @@
+<?xml version="1.0"?>
+<!-- ===========================================================================  -->
+<!-- |    robot.urdf.xacro  (ROS 2 / gz port)                                    | -->
+<!-- |    author: Koji Shibata                                                   | -->
+<!-- |    e-mail: kshibata.0519@gmail.com                                        | -->
+<!-- |    This is a URDF file that describes an omnidirectional                   | -->
+<!-- |    four-wheeled robot for ROS 2 users.                                     | -->
+<!-- ===========================================================================  -->
+<robot name="swerve_robot" xmlns:xacro="http://ros.org/wiki/xacro">
+<xacro:property name="body_length" value="0.75"/>
+<xacro:property name="body_width" value="0.75"/>
+<xacro:property name="body_height" value="0.25"/>
+<xacro:property name="body_mass" value="1."/>
+<!-- Wheel-center spacing along the body X and Y axes (m). -->
+<xacro:property name="wheelbase" value="0.75"/>
+<xacro:property name="track_width" value="0.75"/>
+<xacro:property name="wheel_radius" value="0.2"/>
+<xacro:property name="wheel_width" value="0.1"/>
+<xacro:property name="wheel_mass" value="0.5"/>
+<!-- Scan plane clearance above the body and wheel tops (m); wheel centers are at body_link height. -->
+<xacro:property name="lidar_scan_clearance" value="0.05"/>
+<xacro:property name="effort_limit" value="1."/>
+<xacro:property name="velocity_limit" value="5."/>
+
+<!-- Absolute path to the ros2_control controller configuration.                -->
+<!-- Passed in from the launch file (resolved from the package share dir).      -->
+<xacro:arg name="controllers_config" default=""/>
+
+<xacro:include filename="wheel.urdf.xacro"/>
+<xacro:include filename="camera.urdf.xacro"/>
+<xacro:include filename="laser.urdf.xacro"/>
+
+	<link name="base_link"/>
+	<link name="body_link">
+		<visual>
+			<geometry>
+				<box size="${body_length} ${body_width} ${body_height}"/>
+			</geometry>
+			<material name="White">
+				<color rgba="1. 1. 1. 1."/>
+			</material>
+		</visual>
+
+		<collision>
+			<geometry>
+				<box size="${body_length} ${body_width} ${body_height}"/>
+			</geometry>
+		</collision>
+
+		<inertial>
+			<origin xyz="0. 0. 0."/>
+			<mass value="${body_mass}"/>
+			<inertia ixx="${body_mass * (body_width**2 + body_height**2) / 12}" ixy="0." ixz="0."
+					  iyy="${body_mass * (body_length**2 + body_height**2) / 12}" iyz="0."
+					  izz="${body_mass * (body_length**2 + body_width**2) / 12}"/>
+		</inertial>
+	</link>
+
+	<link name="front_marker_link">
+		<visual>
+			<geometry>
+				<box size="0.05 0.05 0.05"/>
+			</geometry>
+			<material name="Red">
+				<color rgba="1. 0. 0. 1."/>
+			</material>
+		</visual>
+
+		<collision>
+			<geometry>
+				<box size="0.05 0.05 0.05"/>
+			</geometry>
+		</collision>
+
+		<inertial>
+			<origin xyz="0. 0. 0."/>
+			<mass value="1.e-6"/>
+			<inertia ixx="1.e-6" ixy="0." ixz="0." iyy="1.e-6" iyz="0." izz="1.e-6"/>
+		</inertial>
+	</link>
+
+	<joint name="base_to_body_joint" type="fixed">
+		<origin xyz="0 0 ${wheel_radius}" rpy="0 0 0"/>
+		<parent link="base_link"/>
+		<child link="body_link"/>
+		<dynamics damping="0." friction="0."/>
+	</joint>
+
+	<joint name="front_marker_joint" type="fixed">
+		<origin xyz="${body_length/2 - 0.02} 0. ${body_height/2 - 0.02}" rpy="0. 0. 0."/>
+		<parent link="body_link"/>
+		<child link="front_marker_link"/>
+	</joint>
+
+	<xacro:wheel_macro suffix="front_left" parent="body_link" x_pos="${wheelbase/2}" y_pos="${track_width/2}"/>
+	<xacro:wheel_macro suffix="front_right" parent="body_link" x_pos="${wheelbase/2}" y_pos="${-track_width/2}"/>
+	<xacro:wheel_macro suffix="rear_left" parent="body_link" x_pos="${-wheelbase/2}" y_pos="${track_width/2}"/>
+	<xacro:wheel_macro suffix="rear_right" parent="body_link" x_pos="${-wheelbase/2}" y_pos="${-track_width/2}"/>
+	<xacro:camera_macro prefix="camera" parent="body_link" xyz="${body_length/2} 0. ${body_height/2}"/>
+	<xacro:laser_macro prefix="lidar" parent="body_link"
+		xyz="0 0 ${max(body_height/2, wheel_radius) + lidar_scan_clearance}" rpy="0 0 0"/>
+
+	<!-- ros2_control: a single system aggregating all 8 wheel joints. -->
+	<ros2_control name="GazeboSimSystem" type="system">
+		<hardware>
+			<plugin>gz_ros2_control/GazeboSimSystem</plugin>
+		</hardware>
+		<xacro:wheel_ros2_control suffix="front_left"/>
+		<xacro:wheel_ros2_control suffix="front_right"/>
+		<xacro:wheel_ros2_control suffix="rear_left"/>
+		<xacro:wheel_ros2_control suffix="rear_right"/>
+	</ros2_control>
+
+	<gazebo reference="base_link">
+		<mu1 value="0.05"/>
+		<mu2 value="0.05"/>
+	</gazebo>
+
+	<gazebo reference="front_marker_link">
+		<material>Gazebo/Red</material>
+	</gazebo>
+
+	<!-- IMU sensor (handled by gz-sim-imu-system, bridged to ROS). -->
+	<gazebo reference="body_link">
+		<sensor name="imu_sensor" type="imu">
+			<always_on>1</always_on>
+			<update_rate>50</update_rate>
+			<topic>imu</topic>
+			<gz_frame_id>body_link</gz_frame_id>
+			<imu>
+				<angular_velocity>
+					<x><noise type="gaussian"><mean>0.</mean><stddev>1.e-3</stddev></noise></x>
+					<y><noise type="gaussian"><mean>0.</mean><stddev>1.e-3</stddev></noise></y>
+					<z><noise type="gaussian"><mean>0.</mean><stddev>1.e-3</stddev></noise></z>
+				</angular_velocity>
+				<linear_acceleration>
+					<x><noise type="gaussian"><mean>0.</mean><stddev>1.e-3</stddev></noise></x>
+					<y><noise type="gaussian"><mean>0.</mean><stddev>1.e-3</stddev></noise></y>
+					<z><noise type="gaussian"><mean>0.</mean><stddev>1.e-3</stddev></noise></z>
+				</linear_acceleration>
+			</imu>
+		</sensor>
+	</gazebo>
+
+	<!-- gz_ros2_control system plugin: loads the controller_manager inside gz. -->
+	<gazebo>
+		<plugin filename="gz_ros2_control-system"
+				name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+			<parameters>$(arg controllers_config)</parameters>
+		</plugin>
+	</gazebo>
+</robot>
