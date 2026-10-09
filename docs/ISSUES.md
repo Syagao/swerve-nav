@@ -1,6 +1,30 @@
 # 待确认事项
 
-更新日期：2026-10-08。以下来自参考源码静态分析；本次没有执行仿真，也没有修改这些问题。表中的验证方式仅供用户授权相关步骤后使用。
+更新日期：2026-10-09。当前问题与原参考源码疑点分开记录；未验证的建议不作为修复结论。表中的后续验证方式仅供用户授权相关步骤后使用。
+
+## 当前项目状态
+
+- Q-002～Q-005 在自有模型中已作相应调整：使用明确方位前缀、转向叉与滚动轮分离碰撞体、校正圆柱惯量轴向、按落地状态定义 base_link。依据为 `200fc25` 的 [robot.urdf.xacro](../src/swerve_nav/urdf/robot.urdf.xacro)、[wheel.urdf.xacro](../src/swerve_nav/urdf/wheel.urdf.xacro)；几何与惯量检查已通过，动力学接触和运动表现仍未验证。
+- Q-007 的“未实例化雷达”不再适用于自有模型，当前已包含 lidar 宏及支架；这不代表传感器数据和桥接已打通，见 [当前传感器定义](INTERFACES.md#当前传感器定义)。
+- Q-001 的目标版本运行兼容性、Q-006 的控制行为仍待相应阶段验证。下方原参考疑点保留其基准与依据，不表示修改过 REF。
+
+## Q-009：Ctrl+C 后 GUI 的 exit code -2（原因已确认）
+
+2026-10-09 用户提供的日志中，joint_state_publisher_gui 在 `user interrupted with ctrl-c (SIGINT)` 之后才报告 `exit code -2`。当次只读检查本机 Lyrical 安装源码确认：GUI 使用 `signal.signal(signal.SIGINT, signal.SIG_DFL)`，launch 的 `execute_local.py` 将非零退出状态记为 ERROR；`-2` 表示被 SIGINT 终止。[Python 退出码说明](https://docs.python.org/3/library/subprocess.html#subprocess.Popen.returncode)。
+
+该记录可以由用户主动停止触发，不能据此判断启动失败。`Waiting for robot_description` 后出现 `Got description` 说明等待已结束；`Stereo is NOT SUPPORTED` 是立体显示能力提示，不阻止普通 RViz 三维显示。以上结论仅解释日志，不证明窗口已经可见或模型交互验收通过。本次未修改项目文件或上游退出处理。
+
+## Q-010：两个 GUI 只有任务栏图标、无法恢复（待解决）
+
+- **已确认现象**：2026-10-09 用户确认 RViz 与 joint_state_publisher_gui 两个窗口均无法从任务栏正常打开；启动日志显示模型初始化、GUI 收到机器人描述，且无所示渲染异常日志。
+- **当次只读检查**：WSLg 已登记两个程序的窗口；X11 端均报告 `Normal`、`IsViewable`，RViz 窗口位于显示范围内。`glxinfo -B` 返回 `D3D12 (NVIDIA GeForce RTX 4060 Laptop GPU)`、`Accelerated: yes`、OpenGL 4.6，说明该次探测的硬件加速可用。
+- **结论边界**：根因尚未确认；上述结果不能证明 RViz 完整渲染链路正常，也不能将问题定性为 NVIDIA 驱动故障。启动和模型解析成功不能替代窗口可见性验证。
+- **已提供但尚无结果的操作**：用 Alt+Tab 选中窗口后 Win+↑ 恢复；若无效，保存工作并停止 launch，在 Windows PowerShell 执行 `wsl --shutdown`，重新进入 Ubuntu 后加载 ROS 与工作区环境再启动。该命令会停止所有 WSL 发行版与其中进程，见 [微软命令说明](https://learn.microsoft.com/en-us/windows/wsl/basic-commands#shutdown)。未收到执行结果，不记录为已恢复。
+- **验收条件**：两个窗口能够显示与恢复，RViz 能显示模型，关节滑块能够改变轮组姿态。
+
+## 原参考源码疑点（保留初始化分析）
+
+以下表格来自 2026-10-08 对参考基准的静态分析；当时未运行参考仿真。当前自有实现的处理状态以上文为准。
 
 | 编号 | 已观察到的事实或推导 | 待确认方式 |
 | --- | --- | --- |

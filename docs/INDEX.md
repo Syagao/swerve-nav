@@ -2,15 +2,17 @@
 
 初始化日期：2026-10-08。目标目录：`/home/syagao/agv_sim_ws`。
 
-本知识库保存项目目标、参考实现和待确认信息。当前尚无自有 ROS 包；下列上游结构和接口用于理解参考项目，不代表已经选定或实现了自己的系统。
+本知识库保存项目目标、当前实现、参考实现和待确认信息。2026-10-09 核对源码基准为 `200fc25`：已有 `src/swerve_nav` 模型包及 RViz 显示入口，Gazebo 动力学与导航尚未打通。
+
+初始化时“当前尚无自有 ROS 包”的记录对应空工作区阶段，已被后续提交推进；历史依据保留在 [PROGRESS.md](PROGRESS.md)。下列文档分别标注当前项目与参考实现，不能把参考功能视为本项目已实现。
 
 | 文档 | 内容 | 何时阅读 |
 | --- | --- | --- |
 | [OVERVIEW.md](OVERVIEW.md) | 目标、环境约束、目录现状、参考版本 | 首次了解项目 |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | 参考项目模块职责、数据流、算法入口 | 分析模块或阅读源码 |
-| [INTERFACES.md](INTERFACES.md) | 参考话题、控制器、关节顺序、坐标关系 | 对接或比较算法 |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | 当前显示入口、模块职责及参考算法数据流 | 分析模块或阅读源码 |
+| [INTERFACES.md](INTERFACES.md) | 当前模型坐标、关节与传感器定义，以及参考接口 | 对接或比较算法 |
 | [DECISIONS.md](DECISIONS.md) | 用户已确定的约束及尚未决定的事项 | 提方案或做技术选择 |
-| [ISSUES.md](ISSUES.md) | 有依据的疑点与后续验证方式 | 用户要求检查相关问题时 |
+| [ISSUES.md](ISSUES.md) | 当前问题、退出日志解释及参考疑点的处理边界 | 用户要求检查相关问题时 |
 | [PROGRESS.md](PROGRESS.md) | 当前完成项、未开展事项、历史边界 | 每次任务开始时 |
 
 协作入口：[AGENTS.md](../AGENTS.md)。编码规范原文：[karpathy-guidelines.mdc](../.cursor/rules/karpathy-guidelines.mdc)。

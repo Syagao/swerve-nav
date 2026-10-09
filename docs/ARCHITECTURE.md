@@ -1,8 +1,24 @@
-# 参考项目架构
+# 项目与参考架构
 
-更新日期：2026-10-08。以下为 [OVERVIEW.md](OVERVIEW.md) 中基准提交的静态分析；本项目自己的包划分和启动方案尚未确定。
+更新日期：2026-10-09。当前实现以提交 `200fc25` 为基准；原参考项目分析保留在后续独立章节，其基准见 [OVERVIEW.md](OVERVIEW.md)。
 
-## 模块与源码入口
+## 当前项目：模型显示
+
+当前只有一个自有包 `swerve_nav`，包名不等于节点名。包内尚无自有 C++ 节点、world、控制器 YAML 或 Gazebo 启动文件。
+
+| 当前文件 | 已实施职责 |
+| --- | --- |
+| [CMakeLists.txt](../src/swerve_nav/CMakeLists.txt)、[package.xml](../src/swerve_nav/package.xml) | `ament_cmake` 资源包；安装 urdf、launch，声明模型显示及 Gazebo 集成依赖；预设 C++20 |
+| [robot.urdf.xacro](../src/swerve_nav/urdf/robot.urdf.xacro) | 集中主要物理参数，组合车体、轮组和传感器，保留 ros2_control/Gazebo 插件声明 |
+| [wheel.urdf.xacro](../src/swerve_nav/urdf/wheel.urdf.xacro) | 固定支撑、转向叉、滚动轮及各自惯量；8 个运动关节及控制接口声明 |
+| [camera.urdf.xacro](../src/swerve_nav/urdf/camera.urdf.xacro)、[laser.urdf.xacro](../src/swerve_nav/urdf/laser.urdf.xacro) | 相机外壳与光学帧、雷达外壳与支架，以及传感器定义 |
+| [display.launch.py](../src/swerve_nav/launch/display.launch.py) | 展开 Xacro，启动 robot_state_publisher、joint_state_publisher_gui、rviz2 三个现成节点 |
+
+显示入口的数据关系为：Xacro → `robot_description` → robot_state_publisher；joint_state_publisher_gui 接收描述并发布手动关节状态；robot_state_publisher 发布机器人内部 TF，RViz 用于显示。滑块产生的姿态不是物理仿真或编码器反馈。
+
+当前 display launch 不加载控制器 YAML 或专用 `.rviz` 配置，不启动 Gazebo、控制管理器或 ROS/Gazebo 桥接，也未设置 `use_sim_time=true`。传感器和控制插件写入 URDF 不等于相应系统已经运行；`controllers_config` 参数默认仍为空。声明依赖也不代表依赖已全部安装或兼容性已验证。
+
+## 参考项目模块与源码入口
 
 | 参考文件 | 职责 |
 | --- | --- |

@@ -38,6 +38,8 @@
 <xacro:property name="steering_pivot_height" value="${wheel_radius + drive_joint_drop}"/>
 <xacro:property name="mount_arm_width" value="0.04"/>
 <xacro:property name="mount_arm_height" value="0.02"/>
+<!-- Recess fixed arms into their bearings to avoid coplanar faces with the chassis top. -->
+<xacro:property name="mount_arm_bearing_overlap" value="0.002"/>
 <xacro:property name="mount_bearing_height" value="0.005"/>
 <xacro:property name="mount_bearing_radius" value="0.012"/>
 <xacro:property name="steering_damping" value="0.10"/>
@@ -59,7 +61,7 @@
 <xacro:property name="lidar_mount_mass" value="0.05"/>
 <!-- Keep the scan plane above the body, wheel modules and camera, with a physical support below it. -->
 <xacro:property name="lidar_scan_clearance" value="0.05"/>
-<xacro:property name="mount_arm_top" value="${steering_pivot_height + fork_top_thickness/2 + mount_bearing_height + mount_arm_height}"/>
+<xacro:property name="mount_arm_top" value="${steering_pivot_height + fork_top_thickness/2 + mount_bearing_height + mount_arm_height - mount_arm_bearing_overlap}"/>
 <xacro:property name="lidar_scan_height" value="${max(body_center_height + body_height/2, 2*wheel_radius, mount_arm_top) + lidar_scan_clearance}"/>
 <xacro:property name="lidar_mount_height" value="${lidar_scan_height - lidar_height/2 - (body_center_height + body_height/2)}"/>
 

@@ -1,6 +1,6 @@
 # 项目概览
 
-更新日期：2026-10-08。
+更新日期：2026-10-09。
 
 ## 用户目标
 
@@ -17,10 +17,10 @@
 | ROS | ROS 2 Lyrical |
 | 仿真器 | Gazebo Jetty / Gazebo Sim 10 |
 | GPU | NVIDIA RTX 4060 Laptop GPU |
-| 图形工具 | 用户已说明 RViz 和 Gazebo 可正常运行 |
+| 图形工具 | 初始阶段用户说明 RViz 和 Gazebo 可运行；2026-10-09 出现两个显示窗口无法恢复的问题，状态见 [ISSUES.md](ISSUES.md) 的 Q-010 |
 | 开发语言 | 本项目自有 C++ 代码统一采用 C++20，包含独立算法库；见 [D-004](DECISIONS.md) |
 
-已只读确认：本机 `/opt/ros/lyrical/share/ament_cmake_ros_core/cmake/ament_ros_defaults.cmake` 声明 `cxx_std_20`。用户于 2026-10-08 明确要求本项目统一使用 C++20；后续自有构建目标按该标准配置。当前尚无自有 ROS 包或 C++ 构建目标，此项为已确定的开发约定，尚无对应编译验证结果。
+已只读确认：本机 `/opt/ros/lyrical/share/ament_cmake_ros_core/cmake/ament_ros_defaults.cmake` 声明 `cxx_std_20`。用户于 2026-10-08 明确要求本项目统一使用 C++20；[当前 CMakeLists.txt](../src/swerve_nav/CMakeLists.txt) 已设置 C++20、标准必需并关闭编译器扩展。当前包只安装模型与启动资源，尚无 C++ 编译目标；资源包构建通过不等于已验证 C++ 算法编译。
 
 ## 当前目录与边界
 
@@ -28,7 +28,11 @@
 agv_sim_ws/
 ├── AGENTS.md                         # 协作与编码约定
 ├── docs/                             # 项目知识库
-├── src/                              # 用户已创建，目前为空
+├── src/
+│   └── swerve_nav/                    # 当前唯一自有 ROS 包
+│       ├── CMakeLists.txt / package.xml
+│       ├── urdf/                     # 机器人、轮组、相机、雷达 Xacro；另有 sphere.urdf
+│       └── launch/display.launch.py  # 模型显示入口
 ├── build/                            # colcon 生成的构建目录
 ├── install/                          # colcon 生成的工作区环境脚本与安装目录
 ├── log/                              # colcon 生成的日志目录
@@ -37,9 +41,9 @@ agv_sim_ws/
 └── .agents/skills/                    # 本地技能
 ```
 
-知识库初始化后，用户创建了 src，并明确要求初始化 ROS 2 工作区。已通过 `colcon build --base-paths src --symlink-install` 完成空工作区首次构建，生成 build/install/log；尚无自有 ROS 包。后续构建继续限定 `--base-paths src`，避免扫描 REF 中的参考包。
+知识库初始化后的首次构建针对空 src，结果为 0 个包；这是历史基线。后续提交 `a95777b` 建立模型描述，`200fc25` 完成尺寸与结构调整、包配置及显示入口，当前 `swerve_nav` 已构建通过。后续构建继续限定 `--base-paths src`，避免扫描 REF 中的参考包。
 
-工作区根目录此前的 `git rev-parse --show-toplevel` 未识别出有效仓库；参考目录内部有独立 Git 仓库。本次没有初始化 Git。
+初始化时，工作区根目录的 `git rev-parse --show-toplevel` 未识别出有效仓库；当前根目录已是项目 Git 仓库，2026-10-09 核对 HEAD 为 `200fc25`。参考目录内部的独立仓库与本项目分开。本次知识库更新不创建提交或推送。
 
 ## 参考资料基准
 
