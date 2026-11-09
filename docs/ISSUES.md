@@ -1,12 +1,12 @@
 # 待确认事项
 
-更新日期：2026-10-09。当前问题与原参考源码疑点分开记录；未验证的建议不作为修复结论。表中的后续验证方式仅供用户授权相关步骤后使用。
+更新日期：2026-11-09。当前问题与原参考源码疑点分开记录；未验证的建议不作为修复结论。表中的后续验证方式仅供用户授权相关步骤后使用。本次只同步资料路径和当前基准，没有复跑或关闭下列运行问题。
 
 ## 当前项目状态
 
-- Q-002～Q-005 在自有模型中已作相应调整：使用明确方位前缀、转向叉与滚动轮分离碰撞体、校正圆柱惯量轴向、按落地状态定义 base_link。依据为 `200fc25` 的 [robot.urdf.xacro](../src/swerve_nav/urdf/robot.urdf.xacro)、[wheel.urdf.xacro](../src/swerve_nav/urdf/wheel.urdf.xacro)；几何与惯量检查已通过，动力学接触和运动表现仍未验证。
+- Q-002～Q-005 在自有模型中已作相应调整：使用明确方位前缀、转向叉与滚动轮分离碰撞体、校正圆柱惯量轴向、按落地状态定义 base_link。依据为 `200fc25` 的 [robot.urdf.xacro](../src/swerve_nav/urdf/robot.urdf.xacro)、[wheel.urdf.xacro](../src/swerve_nav/urdf/wheel.urdf.xacro)；当时仅通过几何与惯量检查。后续用户已确认直接命令可驱动车辆，仍不能据此认定接触参数和全部运动工况已验证。
 - Q-007 的“未实例化雷达”不再适用于自有模型，当前已包含 lidar 宏及支架；这不代表传感器数据和桥接已打通，见 [当前传感器定义](INTERFACES.md#当前传感器定义)。
-- Q-001 的目标版本运行兼容性、Q-006 的控制行为仍待相应阶段验证。下方原参考疑点保留其基准与依据，不表示修改过 REF。
+- Q-001 在自有最小仿真范围内已有运行证据，见 [PROGRESS.md](PROGRESS.md)，不扩大为传感器/导航栈完整兼容性结论。Q-006 所述参考逆解未移植；当前只有 WheelConfig 配置类型，运动仍依靠直接关节命令，超时停车和有限舵角选解尚未实现。下方原参考疑点保留其基准与依据，不表示修改过参考仓库。
 
 ## Q-009：Ctrl+C 后 GUI 的 exit code -2（原因已确认）
 
@@ -21,6 +21,23 @@
 - **结论边界**：根因尚未确认；上述结果不能证明 RViz 完整渲染链路正常，也不能将问题定性为 NVIDIA 驱动故障。启动和模型解析成功不能替代窗口可见性验证。
 - **已提供但尚无结果的操作**：用 Alt+Tab 选中窗口后 Win+↑ 恢复；若无效，保存工作并停止 launch，在 Windows PowerShell 执行 `wsl --shutdown`，重新进入 Ubuntu 后加载 ROS 与工作区环境再启动。该命令会停止所有 WSL 发行版与其中进程，见 [微软命令说明](https://learn.microsoft.com/en-us/windows/wsl/basic-commands#shutdown)。未收到执行结果，不记录为已恢复。
 - **验收条件**：两个窗口能够显示与恢复，RViz 能显示模型，关节滑块能够改变轮组姿态。
+- **后续范围说明**：用户后来提供了 Gazebo 模型截图并确认小车可运动，说明独立 Gazebo 链路已能继续验证；没有收到 RViz 和关节 GUI 恢复的明确结果，Q-010 不标记为已解决，也不作为当前 Gazebo 学习的已确认阻塞。
+
+## Q-011：支撑臂与车顶衔接出现三角斑块（已修改，画面复验待确认）
+
+用户截图对应固定支撑臂顶面与车顶同处地面高度 0.260 m，存在共面深度冲突。`063a827` 在 robot.urdf.xacro 引入 0.002 m 的 `mount_arm_bearing_overlap`，使四个固定支撑臂的 visual/collision 同步下移 2 mm，嵌入固定轴承。
+
+修改时已验证：支撑臂顶面为 0.258 m，与转向叉顶面仍有 3 mm 间隙；Xacro、check_urdf、SDF 转换和构建通过。未取得修改后的 GUI 画面对比，不宣称视觉复验已完成。
+
+## Q-012：停止无界面仿真时桥接进程 exit code -11（待定位）
+
+此前最小仿真运行检查中，模型生成、三个控制器 active、8 个关节反馈及时间推进均已确认；Ctrl+C 退出时 `ros_gz_bridge/parameter_bridge` 出现 -11（SIGSEGV）。该退出异常与 Q-009 的 SIGINT -2 不同，原因未定位，未作修复；本次知识库同步未复跑该退出过程。
+
+## Q-013：包级 lint 尚未全部通过（已知检查限制）
+
+此前包级检查发现 display.launch.py 的版权头和 flake8 格式问题。Gazebo launch 精简为 SPDX 短头后，已保留并安装完整 MIT 许可，但当前 ament_copyright 对该短头仍报告无法识别。未关闭检查或修改不相关文件来隐藏问题。
+
+最近 CMake 修改已通过定向 ament_lint_cmake、清单解析和构建；这不代表整个包的测试通过。新增的空 C++ 文件尚未参加新一轮完整 lint，也没有运动学行为测试。
 
 ## 原参考源码疑点（保留初始化分析）
 
@@ -39,10 +56,10 @@
 
 证据入口：
 
-- Q-001：[README](../REF/omnidirectional_four_wheeled_robot/README.md)、[CI](../REF/omnidirectional_four_wheeled_robot/.github/workflows/ci.yml)、[控制器配置](../REF/omnidirectional_four_wheeled_robot/config/controllers.yaml)。
-- Q-002～Q-005：[模型](../REF/omnidirectional_four_wheeled_robot/urdf/robot.urdf.xacro)、[轮组](../REF/omnidirectional_four_wheeled_robot/urdf/wheel.urdf.xacro)、[几何常量](../REF/omnidirectional_four_wheeled_robot/include/omnidirectional_four_wheeled_robot/robot_geometry.hpp)、[里程计](../REF/omnidirectional_four_wheeled_robot/src/odometry_publisher.cpp)。
-- Q-006：[逆解节点](../REF/omnidirectional_four_wheeled_robot/src/controller_kinematics.cpp)。
-- Q-007：[模型](../REF/omnidirectional_four_wheeled_robot/urdf/robot.urdf.xacro)、[桥配置](../REF/omnidirectional_four_wheeled_robot/config/gz_bridge.yaml)。
-- Q-008：[smoke_test.sh](../REF/omnidirectional_four_wheeled_robot/scripts/smoke_test.sh)。
+- Q-001：[README](../参考项目/omnidirectional_four_wheeled_robot/README.md)、[CI](../参考项目/omnidirectional_four_wheeled_robot/.github/workflows/ci.yml)、[控制器配置](../参考项目/omnidirectional_four_wheeled_robot/config/controllers.yaml)。
+- Q-002～Q-005：[模型](../参考项目/omnidirectional_four_wheeled_robot/urdf/robot.urdf.xacro)、[轮组](../参考项目/omnidirectional_four_wheeled_robot/urdf/wheel.urdf.xacro)、[几何常量](../参考项目/omnidirectional_four_wheeled_robot/include/omnidirectional_four_wheeled_robot/robot_geometry.hpp)、[里程计](../参考项目/omnidirectional_four_wheeled_robot/src/odometry_publisher.cpp)。
+- Q-006：[逆解节点](../参考项目/omnidirectional_four_wheeled_robot/src/controller_kinematics.cpp)。
+- Q-007：[模型](../参考项目/omnidirectional_four_wheeled_robot/urdf/robot.urdf.xacro)、[桥配置](../参考项目/omnidirectional_four_wheeled_robot/config/gz_bridge.yaml)。
+- Q-008：[smoke_test.sh](../参考项目/omnidirectional_four_wheeled_robot/scripts/smoke_test.sh)。
 
 问题的发现不授权修复。处理后记录实际验证结果，再改变状态。
