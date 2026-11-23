@@ -8,6 +8,14 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 find_package(ament_cmake REQUIRED)
 
+add_library(swerve_kinematics STATIC
+  src/swerve_kinematics.cpp
+)
+
+target_include_directories(swerve_kinematics PUBLIC
+  "${CMAKE_CURRENT_SOURCE_DIR}/include"
+)
+
 install(
   DIRECTORY urdf launch config
   DESTINATION share/${PROJECT_NAME}
