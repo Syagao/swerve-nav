@@ -114,12 +114,13 @@
 		</link>
 
 		<!-- joint1: steering (position controlled) -->
-		<joint name="${suffix}_joint1" type="continuous">
+		<joint name="${suffix}_joint1" type="revolute">
 			<origin xyz="${x_pos} ${y_pos} ${steering_pivot_height - body_center_height}" rpy="0 0 0"/>
 			<axis xyz="0. 0. 1."/>
 			<parent link="${parent}"/>
 			<child link="${suffix}_link1"/>
-			<limit effort="${steering_effort_limit}" velocity="${steering_velocity_limit}"/>
+			<limit lower="-${steering_angle_limit}" upper="${steering_angle_limit}"
+			       effort="${steering_effort_limit}" velocity="${steering_velocity_limit}"/>
 			<dynamics damping="${steering_damping}" friction="0"/>
 		</joint>
 
@@ -145,8 +146,8 @@
 	<xacro:macro name="wheel_ros2_control" params="suffix">
 		<joint name="${suffix}_joint1">
 			<command_interface name="position">
-				<param name="min">-${pi}</param>
-				<param name="max">${pi}</param>
+				<param name="min">-${steering_angle_limit}</param>
+				<param name="max">${steering_angle_limit}</param>
 			</command_interface>
 			<state_interface name="position"/>
 			<state_interface name="velocity"/>

@@ -31,13 +31,35 @@ struct WheelVelocity {
     double vy; // 转向轴处的侧向速度，m/s
 };
 
-std::array<WheelVelocity, 4> compute_wheel_velocities(
-    const WheelLayout &layout, const BodyVelocity &velocity);
-
 struct WheelTarget {
     double steer_angle; // 目标舵角，rad，绕转向轴逆时针为正
     double drive_speed; // 目标滚动线速度，m/s，正负表示滚动方向
 };
+
+enum class Branch {
+    None,    // 首次解算，暂无历史分支
+    Forward, // 正轮速候选
+    Reverse, // 负轮速候选
+};
+
+struct IkHint {
+    double angle;      // 实测舵角，rad，用来比较转向行程
+    double hold_angle; // 上次下发的舵角，rad，轮速接近零时沿用
+    Branch branch;     // 上次选中的分支，首次传 Branch::None
+};
+
+struct IkParams {
+    double zero_speed; // 近零轮速阈值，m/s
+    double switch_gap; // 切换分支至少要节省的转向行程，rad
+};
+
+struct WheelGoal {
+    WheelTarget target; // 本次选出的目标舵角和带符号轮速
+    Branch branch;      // 本次选解采用的分支
+};
+
+std::array<WheelVelocity, 4> compute_wheel_velocities(
+    const WheelLayout &layout, const BodyVelocity &velocity);
 
 std::array<WheelTarget, 4> inverse_kinematics(
     const WheelLayout &layout, const BodyVelocity &velocity);

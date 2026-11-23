@@ -46,6 +46,7 @@
 <xacro:property name="drive_damping" value="0.05"/>
 <xacro:property name="steering_effort_limit" value="8.0"/>
 <xacro:property name="drive_effort_limit" value="3.0"/>
+<xacro:property name="steering_angle_limit" value="${2 * pi / 3}"/>
 <xacro:property name="steering_velocity_limit" value="${pi}"/>
 <!-- Wheel rim speed limit: 0.8 m/s. Actual acceleration limits belong to the future controller. -->
 <xacro:property name="max_wheel_linear_speed" value="0.80"/>
