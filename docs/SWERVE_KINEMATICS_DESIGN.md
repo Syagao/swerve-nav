@@ -1,6 +1,6 @@
 # 四轮独立转向逆运动学与周期目标生成
 
-当前 C++20 算法库已实现 `compute_wheel_velocities()`。头文件已定义 `WheelConfig`、固定四轮的 `WheelLayout`、`BodyVelocity`、`WheelVelocity` 和 `WheelTarget`。两参数的 `inverse_kinematics()` 仍是空函数，当前包也没有整车命令节点。以下选解和周期控制流程是后续实现建议。依据见 [算法头文件](../src/swerve_nav/include/swerve_kinematics.hpp)、[算法源码](../src/swerve_nav/src/swerve_kinematics.cpp) 和 [构建配置](../src/swerve_nav/CMakeLists.txt)。
+当前 C++20 算法源码已写出转向轴速度计算、整组逆解和周期控制辅助函数，`DriveControl` 构造函数和 `step()` 已声明，定义及 ROS 接入待完成。辅助函数的实现状态与当前编译检查见 [项目进度](PROGRESS.md)。本文记录接口及待实现的周期流程。依据见 [算法头文件](../src/swerve_nav/include/swerve_kinematics.hpp)、[算法源码](../src/swerve_nav/src/swerve_kinematics.cpp) 和 [构建配置](../src/swerve_nav/CMakeLists.txt)。
 
 ## 实车转向要求与当前模型
 
@@ -22,15 +22,15 @@
 
 - `compute_wheel_velocities()` 保持纯计算函数。第 `i` 轮的转向轴速度为 `(vx − wz*y_i, vy + wz*x_i)`，输出仍是车体系二维速度分量。
 - `solve_ik` 负责整组逆解和统一限速。实测舵角、上次命令舵角和已有分支由调用者传入，函数内部没有跨周期状态。
-- `SetpointGenerator::step` 负责停稳、预转向、跟踪和状态更新。生成器保存布局、上次输出的命令、选解分支和执行阶段。每次调用返回状态和本周期命令。
+- `DriveControl::step` 负责停稳、预转向、跟踪和状态更新。类保存布局、上一组命令、各轮选解分支和私有阶段。每次调用返回本周期命令和整组逆解是否有解。
 - ROS 2 层负责装配配置、按关节名读取 `JointState`、判断反馈与车体命令是否有效，并按控制器轮序下发。驱动反馈用 `speed = omega × radius`，驱动命令用 `omega = speed ÷ radius`。算法内用 rad、m/s、rad/s 和 s。
 - 装配时核对有限配置值、正半径、有效舵角区间及本阶段用到的正限值。周期输入需要有限的车体命令、四轮有效反馈和有限且大于零的 `dt`。命令超时且反馈仍有效时走正常减速停车。反馈丢失、坐标越域或时钟跳变时，由 ROS 层请求零驱动、暂停更新舵角目标，恢复后重新接管。零驱动命令只表示已请求停止，停稳仍须由有效反馈确认。
 
 ## 函数名与输入输出
 
-保留已实现的 `compute_wheel_velocities` 及其签名。首版实现逆解时，建议用下表的 `solve_ik` 替换当前两参数的 `inverse_kinematics` 空函数。后续命名沿用本项目的函数 `snake_case` 和类型 `PascalCase`。在签名中用 `body`、`vel`、`prev`、`goal`、`fb` 区分数据来源。局部公式中用 `i`、`s`、`k`。单位写在类型契约中，关节角用 rad、滚动线速度用 m/s、周期 `dt` 用 s。
+`compute_wheel_velocities` 和 `solve_ik` 是可独立调用的计算入口。`solve_ik` 接收选解提示，以便使用实测舵角、上次命令舵角和上次选择的分支。关节角用 rad、滚动线速度用 m/s、周期 `dt` 用 s。
 
-### 建议的数据类型
+### 当前的数据类型
 
 ```cpp
 template<class T>
@@ -59,15 +59,13 @@ struct WheelGoal {
     Branch branch;
 };
 
-enum class StepStatus { Stopped, Decelerating, Aligning, Tracking, Unreachable };
-
 struct StepResult {
-    StepStatus status;
+    bool reachable;
     Wheels<WheelTarget> cmd;
 };
 ```
 
-`Wheels<T>` 仅是固定四元素数组的别名，轮序与 `WheelLayout` 一致。`WheelGoal` 记录逆解的目标和分支，`StepResult::cmd` 是本周期实际生成的命令。采用 `std::optional` 表达明确的求解失败，首版可先实现到 `solve_ik`，再引入周期控制相关类型。
+`Wheels<T>` 是固定四元素数组的别名，轮序与 `WheelLayout` 一致。`WheelGoal` 记录逆解目标和选解分支，`solve_ik` 用 `std::optional` 表达求解失败。`StepResult::cmd` 始终给出本周期命令，`reachable` 只反映逆解是否有解。有解时也可能正在减速或预转向。无解时 `reachable` 为 `false`，`cmd` 给出减速命令。
 
 ### 函数签名与职责
 
@@ -75,7 +73,7 @@ struct StepResult {
 
 | 函数 | 输入类型和参数名 | 返回类型 | 职责 |
 | --- | --- | --- | --- |
-| `compute_wheel_velocities` | `WheelLayout layout, BodyVelocity velocity` | `std::array<WheelVelocity, 4>` | 计算各转向轴速度。沿用现有源码接口。 |
+| `compute_wheel_velocities` | `WheelLayout layout, BodyVelocity velocity` | `Wheels<WheelVelocity>` | 计算各转向轴速度。 |
 | `fit_angle` | `double angle, double lo, double hi, double actual` | `std::optional<double>` | 取限位内离实测角最近的等价角。无合法等价角时返回空。 |
 | `pick_target` | `WheelVelocity vel, WheelConfig cfg, IkHint hint, IkParams ik` | `std::optional<WheelGoal>` | 选正反转候选。近零轮速时返回保持舵角、轮速为零的有效结果，并沿用分支。 |
 | `solve_ik` | `WheelLayout layout, BodyVelocity body, Wheels<IkHint> hints, IkParams ik` | `std::optional<Wheels<WheelGoal>>` | 逐轮选解和统一限速。任一非零轮无解时整组返回空。 |
@@ -83,9 +81,9 @@ struct StepResult {
 | `brake` | `WheelLayout layout, Wheels<WheelTarget> prev, double dt` | `Wheels<WheelTarget>` | 沿用上次下发的舵角，按各轮减速上限求共同系数。 |
 | `align_scale` | `Wheels<WheelTarget> goal, Wheels<WheelState> fb` | `double` | 返回由实测舵角误差决定的速度系数上限，范围 `[0, 1]`。 |
 | `track` | `WheelLayout layout, Wheels<WheelTarget> prev, Wheels<WheelTarget> goal, double cap, double dt` | `std::optional<Wheels<WheelTarget>>` | 在已通过换向检查的前提下，从 `[0, cap]` 选满足四轮加减速上限的最大正系数。无正系数时返回空。 |
-| `SetpointGenerator::step` | `BodyVelocity body, Wheels<WheelState> fb, double dt` | `StepResult` | 读取反馈、组织逆解与周期输出，并保存下一周期使用的命令和状态。 |
+| `DriveControl::step` | `BodyVelocity body, Wheels<WheelState> fb, double dt` | `StepResult` | 读取反馈、组织逆解与周期输出，并保存下一周期使用的命令和状态。待实现。 |
 
-`SetpointGenerator` 构造时接收布局、`IkParams`、停稳容差 `stop_tol`（m/s）和到位容差 `angle_tol`（rad）。`step` 用 `fb` 的实测舵角和 `prev` 的命令舵角构造 `hints`。整组逆解成功后，提取 `WheelGoal::target` 作为 `goal`，同时更新分支记忆。`fit_angle`、`pick_target` 和周期控制辅助函数可放在 `swerve_kinematics.cpp` 内部。需要独立验证的入口为 `solve_ik` 和 `step`。
+`DriveControl` 构造时接收布局、`IkParams`、停稳容差 `stop_tol`（m/s）和到位容差 `angle_tol`（rad）。`step` 用 `fb` 的实测舵角和 `prev_` 的命令舵角构造 `hints`。首次调用时 `prev_` 为空，从有效反馈建立基准。整组逆解成功后，提取 `WheelGoal::target` 作为 `goal`，同时更新分支记忆。六个辅助函数集中在 `swerve_kinematics.cpp` 的匿名命名空间里。
 
 ## 有限命令区间内的选解
 
@@ -94,19 +92,17 @@ struct StepResult {
 3. 在有界位置坐标下，用 `abs(候选角 − 实测角)` 比较实际行程。已有分支可行时，另一分支节省的行程超过 `ik.switch_gap` 才切换。分支为 `None` 时选行程较短的候选，等距时选正转。已有分支无解时选另一合法分支，何时下发由周期流程决定。首版只保留正反转分支，预转向期间若仍出现选解摆动，再验证是否需要引入参考库的运动方向记忆。
 4. 对所有非零目标轮速求 `scale = min(1, min_i(drive_speed_i / abs(speed_i)))`，四轮有符号轮速一起乘以 `scale`。一个常数缩放整组目标即可保持速度比例。在理想舵角和无滑动条件下，这等效于按同一比例缩放车体 `(vx, vy, wz)`。近零轮的截断属于额外近似。
 
-±120° 的总行程为 240°。允许滚动轮正反转时，每个非零方向至少有一个合法候选。例如轮速向量方向为 +150° 时，正转候选超限，可以用 −30° 舵角和负轮速实现。验证 `Unreachable` 时使用较窄的测试限位，例如 ±30° 下要求纯横移。跟踪系数区间为空时，目标几何上可达，当前周期应先减速。
+±120° 的总行程为 240°。允许滚动轮正反转时，每个非零方向至少有一个合法候选。例如轮速向量方向为 +150° 时，正转候选超限，可以用 −30° 舵角和负轮速实现。验证 `reachable == false` 时使用较窄的测试限位，例如 ±30° 下要求纯横移。跟踪系数区间为空时，目标几何上可达，当前周期应先减速。
 
 ## 周期控制
 
 启动或重新接管时，从有效实测舵角和实测轮速建立首周期基准，先等待停稳。基准必须在生成器支持的命令范围内。若舵角坐标不匹配或实际轮速已经超出设计限值，应先由执行层按异常停车流程处理。正常运行后，滚动加减速以**上一周期输出的命令**为基准，选解、舵角到位和停车确认使用**实测反馈**。建议用等待停稳、预转向、跟踪三个内部阶段编排下列行为。
 
-| 输出状态 | 下发行为与进入条件 |
+| 内部阶段 | 下发行为与转换条件 |
 | --- | --- |
-| `Decelerating` | 保持上一组舵角，同一比例降低上一组轮速。显式停车或危险换向进入等待停稳，一旦进入就等到命令和反馈都停稳，后续新目标可更新待对齐方向。跟踪系数暂时无解时也使用该输出，若仍有滚动且没有触发等待条件，下一周期可继续尝试跟踪。 |
-| `Unreachable` | 任一非零轮无合法舵角，整组沿上一命令减速并进入等待停稳。 |
-| `Stopped` | 停车目标有效，四轮驱动命令已置零，且四轮实测滚动速度均在停稳容差内。 |
+| `WaitingForStop` | 启动、零速指令、整组逆解无解或需停稳的换向都进入此阶段。保持上一组舵角，按共同系数减速。四轮命令归零、实测均停稳且有可执行的非零目标时进入 `Aligning`。 |
 | `Aligning` | 确认停稳后才更新舵角目标，全部驱动命令维持零。若反馈重新超出停稳容差，保留已下发的舵角目标，等再次停稳再更新。非零目标轮的实测舵角进入到位容差后才进入跟踪。 |
-| `Tracking` | 输出满足本周期约束的整组舵角和轮速。若换向、机械位置行程大于 π、对齐系数为零或全组驱动命令已降为零，转回等待停稳。 |
+| `Tracking` | 输出满足本周期约束的整组舵角和轮速。若需停稳换向、对齐系数为零或全组驱动命令已归零，转回 `WaitingForStop`。共同系数暂时无解时可用 `brake()` 降速，仍有滚动且满足跟踪条件时留在 `Tracking`，下一拍用最新目标重算。 |
 
 **换向判定。** 比较上一轮速命令与新目标的非零符号。在某轮上一周期命令刚好为零时，若该轮仍有超过停稳容差的反向实测轮速，也先停车再转向，避免用一拍零命令绕过实测停稳条件。位置行程检查针对两次舵角命令，使用经验证的关节位置表示。
 
@@ -124,7 +120,7 @@ struct StepResult {
 
 | 步骤 | 可检查的行为 |
 | --- | --- |
-| 1. 选角与整组逆解 | 倒车可以用零舵角加负轮速。覆盖边界舍入、双候选等距和滞回、±30° 下纯横移整组无解，以及单轮近零保持舵角。按 `speed × (cos(angle), sin(angle))` 重建各轮向量。 |
+| 1. 验证逆解 | 覆盖倒车、边界舍入、等距和滞回、±30° 下横移无解以及单轮近零保角。按 `speed × (cos(angle), sin(angle))` 重建各轮向量。 |
 | 2. 核对车体几何与统一限速 | 对 `(vx, vy, wz) = (0, 0, 1)`，左前轮向量为 `(−0.31, +0.35)` m/s，右后为 `(+0.31, −0.35)` m/s。对 `(0.31, −0.35, 1)`，左前轮为零，其余三轮仍解算。直行目标为 1.60 m/s 时，按当前模型应统一缩放为 0.80 m/s，对应 8 rad/s。 |
 | 3. 验证连续周期 | 反号后先减速，命令归零而反馈未停稳时继续等，舵角未到位时保持零驱动。测试逐轮限值不同、目标轮速归零，以及共同系数区间为空。例如两轮均要到 0.80 m/s，上期分别为 0.60 与 0.10 m/s，当两轮加减速度幅值均为 1 m/s²、`dt = 0.10 s` 时，公共下界 0.625 大于上界 0.25，应沿上一组命令比例减速。 |
 | 4. Gazebo 验收 | 先核对展开后的四个 `joint1` 均为 `revolute`，且机械限位和位置命令区间均为 ±2π/3。保持驱动为零，验证接近两端的舵角命令、超限行为以及 +119° 到 −119° 双向切换时的实际行程。再验证停稳、预转向、起步和小幅连续转向，记录舵角误差、实测轮速及车体运动。ROS 两组关节命令经不同话题发送，起步依赖已确认的实测舵角和轮速门槛。 |

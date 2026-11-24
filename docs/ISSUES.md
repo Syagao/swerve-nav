@@ -1,12 +1,12 @@
 # 待确认事项
 
-更新日期：2026-11-09。当前问题与原参考源码疑点分开记录；未验证的建议不作为修复结论。表中的后续验证方式仅供用户授权相关步骤后使用。本次只同步资料路径和当前基准，没有复跑或关闭下列运行问题。
+更新日期：2026-11-24。当前编译检查见 [PROGRESS.md](PROGRESS.md)。下表保留原参考源码疑点和已记录的运行问题。
 
 ## 当前项目状态
 
 - Q-002～Q-005 在自有模型中已作相应调整：使用明确方位前缀、转向叉与滚动轮分离碰撞体、校正圆柱惯量轴向、按落地状态定义 base_link。依据为 `200fc25` 的 [robot.urdf.xacro](../src/swerve_nav/urdf/robot.urdf.xacro)、[wheel.urdf.xacro](../src/swerve_nav/urdf/wheel.urdf.xacro)；当时仅通过几何与惯量检查。后续用户已确认直接命令可驱动车辆，仍不能据此认定接触参数和全部运动工况已验证。
 - Q-007 的“未实例化雷达”不再适用于自有模型，当前已包含 lidar 宏及支架；这不代表传感器数据和桥接已打通，见 [当前传感器定义](INTERFACES.md#当前传感器定义)。
-- Q-001 在自有最小仿真范围内已有运行证据，见 [PROGRESS.md](PROGRESS.md)，不扩大为传感器/导航栈完整兼容性结论。Q-006 所述参考逆解未移植；当前只有 WheelConfig 配置类型，运动仍依靠直接关节命令，超时停车和有限舵角选解尚未实现。下方原参考疑点保留其基准与依据，不表示修改过参考仓库。
+- Q-001 的自有最小仿真运行证据见 [PROGRESS.md](PROGRESS.md)。Q-006 针对参考实现。自有算法已有有限舵角选解函数体，周期控制和命令超时停车仍待接入，Gazebo 当前仍由直接关节命令驱动。
 
 ## Q-009：Ctrl+C 后 GUI 的 exit code -2（原因已确认）
 
@@ -56,10 +56,10 @@
 
 证据入口：
 
-- Q-001：[README](../参考项目/omnidirectional_four_wheeled_robot/README.md)、[CI](../参考项目/omnidirectional_four_wheeled_robot/.github/workflows/ci.yml)、[控制器配置](../参考项目/omnidirectional_four_wheeled_robot/config/controllers.yaml)。
-- Q-002～Q-005：[模型](../参考项目/omnidirectional_four_wheeled_robot/urdf/robot.urdf.xacro)、[轮组](../参考项目/omnidirectional_four_wheeled_robot/urdf/wheel.urdf.xacro)、[几何常量](../参考项目/omnidirectional_four_wheeled_robot/include/omnidirectional_four_wheeled_robot/robot_geometry.hpp)、[里程计](../参考项目/omnidirectional_four_wheeled_robot/src/odometry_publisher.cpp)。
-- Q-006：[逆解节点](../参考项目/omnidirectional_four_wheeled_robot/src/controller_kinematics.cpp)。
-- Q-007：[模型](../参考项目/omnidirectional_four_wheeled_robot/urdf/robot.urdf.xacro)、[桥配置](../参考项目/omnidirectional_four_wheeled_robot/config/gz_bridge.yaml)。
-- Q-008：[smoke_test.sh](../参考项目/omnidirectional_four_wheeled_robot/scripts/smoke_test.sh)。
+- Q-001：[README](../ref/omnidirectional_four_wheeled_robot/README.md)、[CI](../ref/omnidirectional_four_wheeled_robot/.github/workflows/ci.yml)、[控制器配置](../ref/omnidirectional_four_wheeled_robot/config/controllers.yaml)。
+- Q-002～Q-005：[模型](../ref/omnidirectional_four_wheeled_robot/urdf/robot.urdf.xacro)、[轮组](../ref/omnidirectional_four_wheeled_robot/urdf/wheel.urdf.xacro)、[几何常量](../ref/omnidirectional_four_wheeled_robot/include/omnidirectional_four_wheeled_robot/robot_geometry.hpp)、[里程计](../ref/omnidirectional_four_wheeled_robot/src/odometry_publisher.cpp)。
+- Q-006：[逆解节点](../ref/omnidirectional_four_wheeled_robot/src/controller_kinematics.cpp)。
+- Q-007：[模型](../ref/omnidirectional_four_wheeled_robot/urdf/robot.urdf.xacro)、[桥配置](../ref/omnidirectional_four_wheeled_robot/config/gz_bridge.yaml)。
+- Q-008：[smoke_test.sh](../ref/omnidirectional_four_wheeled_robot/scripts/smoke_test.sh)。
 
 问题的发现不授权修复。处理后记录实际验证结果，再改变状态。

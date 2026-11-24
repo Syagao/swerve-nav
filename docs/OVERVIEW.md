@@ -1,6 +1,6 @@
 # 项目概览
 
-更新日期：2026-11-09。当前源码基准为 `fc446df` 加工作区未提交修改。
+当前源码基准和验证状态见 [PROGRESS.md](PROGRESS.md)。
 
 ## 用户目标
 
@@ -20,7 +20,7 @@
 | 图形工具 | 后续用户已提供 Gazebo 模型截图并确认直接命令可驱动车辆；此前 RViz/关节 GUI 无法恢复的问题仍未单独确认解决，见 [ISSUES.md](ISSUES.md) 的 Q-010 |
 | 开发语言 | 本项目自有 C++ 代码统一采用 C++20，包含独立算法库；见 [D-004](DECISIONS.md) |
 
-已只读确认：本机 `/opt/ros/lyrical/share/ament_cmake_ros_core/cmake/ament_ros_defaults.cmake` 声明 `cxx_std_20`。用户于 2026-10-08 明确要求本项目统一使用 C++20；[当前 CMakeLists.txt](../src/swerve_nav/CMakeLists.txt) 已设置 C++20、标准必需并关闭编译器扩展。`200fc25` 阶段只安装资源；2026-10-14 已增加并构建静态库目标，但算法文件仍为空，验证范围见 [PROGRESS.md](PROGRESS.md)。
+本机 ROS 2 Lyrical 的 ament 默认声明 `cxx_std_20`。[当前 CMakeLists.txt](../src/swerve_nav/CMakeLists.txt) 要求 C++20、关闭编译器扩展，并构建 `swerve_kinematics` 静态库。
 
 用户于 2026-11-09 重申以 C++20 为主，随后要求将原协作参考与 Karpathy 准则直接整合到 [AGENTS.md](../AGENTS.md)。该文件是可独立使用的项目协作与编码规范入口，无需保留或另外读取两份源文件。
 
@@ -37,20 +37,18 @@ agv_sim_ws/
 │       ├── urdf/                     # 机器人、轮组、相机、雷达 Xacro；另有 sphere.urdf
 │       ├── launch/                   # display.launch.py、gazebo.launch.py
 │       ├── config/controllers.yaml   # 关节控制器配置
-│       ├── include/swerve_kinematics.hpp  # 已定义 WheelConfig
-│       └── src/                      # 算法与节点 .cpp；当前均为空
+│       ├── include/swerve_kinematics.hpp  # 轮组类型、逆解与周期控制接口
+│       └── src/swerve_kinematics.cpp      # 逆解及周期控制辅助函数
 ├── build/                            # colcon 生成的构建目录
 ├── install/                          # colcon 生成的工作区环境脚本与安装目录
 ├── log/                              # colcon 生成的日志目录
-├── 参考项目/                         # 九个独立参考仓库，默认只读；清单见下表
+├── ref/                              # 九份参考资料，默认只读
 └── .agents/skills/                    # 本地技能
 ```
 
-知识库初始化后的首次构建针对空 src，结果为 0 个包；这是历史基线。后续 `a95777b` 建立模型描述，`200fc25` 完成模型调整及显示入口，`063a827` 增加 Gazebo 仿真与关节控制。当前包内尚无自有 world 文件；仿真使用 Gazebo 自带世界。后续构建继续限定 `--base-paths src`，避免扫描 `参考项目/` 中的参考包。
+包内尚无自有 world 文件，仿真使用 Gazebo 自带世界。构建限定 `--base-paths src`，避免扫描 `ref/` 中的参考包。历史进展见 [PROGRESS.md](PROGRESS.md)。
 
-当前位于 `main`，HEAD 与本地跟踪引用 `origin/main` 均为 `fc446df`；2026-11-06 已实际核对该提交推送成功，同时上传此前的 `063a827`。本次未重新查询远程。转向限位、算法库构建配置及后续源码/文档修改仍有未提交内容，以工作区为准。
-
-参考目录由 `REF/` 改名为 `参考项目/`；[.gitignore](../.gitignore) 已忽略两种名称，参考仓库不随主项目提交。目录内部的独立仓库与本项目分开。
+参考目录历史上使用过 `REF/` 和 `参考项目/`，当前为 `ref/`。[.gitignore](../.gitignore) 忽略参考副本，参考代码与自有源码分开维护。
 
 ## 参考资料基准
 
@@ -58,30 +56,30 @@ agv_sim_ws/
 
 | 项目与本地入口 | 基准提交 | 本项目中的参考用途 |
 | --- | --- | --- |
-| [omnidirectional_four_wheeled_robot](../参考项目/omnidirectional_four_wheeled_robot/README.md) | `b40ae465683c` | 原始 URDF/Xacro 来源、最小仿真、关节控制和里程计链路 |
-| [VehicleMotionControl](../参考项目/VehicleMotionControl/README.md) | `2290738898e6`，有本地修改 | 用户既有全向控制、有限舵角选解、轮组目标生成与轨迹跟踪思路 |
-| [linorobot2](../参考项目/linorobot2/README.md) | `41d6b4e6b1f9`，分支 `lyrical` | 里程计融合、SLAM、Nav2 的系统集成；其差速/麦克纳姆解算不直接适用于本车 |
-| [zinger_swerve_controller](../参考项目/zinger_swerve_controller/README.md) | `eaf2becbcf45` | 单轮转向模块建模、正逆解与运动曲线；需补本车机械角度限位约束 |
-| [navigation2](../参考项目/navigation2/README.md) | `ae23216fd4d0` | 导航架构、规划/控制插件与接口 |
-| [ros2_control](../参考项目/ros2_control/README.md) | `de472cd59309` | 控制管理器、硬件接口、状态与命令接口、关节限位 |
-| [ompl](../参考项目/ompl/README.md) | `1ae6ac0bf7e9` | 采样运动规划与状态空间的后续研究 |
-| [acados](../参考项目/acados/README.md) | `503364817c87` | 最优控制和 MPC 求解的后续研究 |
-| [autoware_universe](../参考项目/autoware_universe/README.md) | `62a5739d4d5a` | 规划、控制及模块接口的工程参考，需核对道路车辆模型与本车的差异 |
+| [omnidirectional_four_wheeled_robot](../ref/omnidirectional_four_wheeled_robot/README.md) | `b40ae465683c` | 原始 URDF/Xacro 来源、最小仿真、关节控制和里程计链路 |
+| [VehicleMotionControl](../ref/VehicleMotionControl/VehicleMotionControl/README.md) | `2290738898e6`，有本地修改 | 用户既有全向控制、有限舵角选解、轮组目标生成与轨迹跟踪思路 |
+| [linorobot2](../ref/linorobot2/README.md) | `41d6b4e6b1f9`，分支 `lyrical` | 里程计融合、SLAM、Nav2 的系统集成；其差速/麦克纳姆解算不直接适用于本车 |
+| [zinger_swerve_controller](../ref/zinger_swerve_controller/README.md) | `eaf2becbcf45` | 单轮转向模块建模、正逆解与运动曲线；需补本车机械角度限位约束 |
+| [navigation2](../ref/navigation2/README.md) | `ae23216fd4d0` | 导航架构、规划/控制插件与接口 |
+| [ros2_control](../ref/ros2_control/README.md) | `de472cd59309` | 控制管理器、硬件接口、状态与命令接口、关节限位 |
+| [ompl](../ref/ompl/README.md) | `1ae6ac0bf7e9` | 采样运动规划与状态空间的后续研究 |
+| [acados](../ref/acados/README.md) | `503364817c87` | 最优控制和 MPC 求解的后续研究 |
+| [autoware_universe](../ref/autoware_universe/README.md) | `62a5739d4d5a` | 规划、控制及模块接口的工程参考，需核对道路车辆模型与本车的差异 |
 
 除 VehicleMotionControl 外，各参考仓库在核对时均无工作区修改；新增五个项目均为 detached HEAD。基准记录只描述本地状态；参考代码的语言和依赖不改变本项目自有 C++20 约定。
 
 ### 原始模型来源
 
 - 上游：[kshibata-g1412049/omnidirectional_four_wheeled_robot](https://github.com/kshibata-g1412049/omnidirectional_four_wheeled_robot)。
-- 本地入口：[参考 README](../参考项目/omnidirectional_four_wheeled_robot/README.md)。
+- 本地入口：[参考 README](../ref/omnidirectional_four_wheeled_robot/README.md)。
 - 阅读基准：`b40ae465683c4d2889c45e07936f658bd364a02a`，提交时间 `2026-06-29T05:28:27+09:00`；初始化时工作树无修改。
-- 本地 [package.xml](../参考项目/omnidirectional_four_wheeled_robot/package.xml) 声明包版本 `2.0.0`，构建类型 `ament_cmake`；这是已经迁移到 ROS 2 的参考实现。
-- [LICENSE](../参考项目/omnidirectional_four_wheeled_robot/LICENSE)：MIT，版权归 Koji Shibata；后续复用时保留许可与来源。
+- 本地 [package.xml](../ref/omnidirectional_four_wheeled_robot/package.xml) 声明包版本 `2.0.0`，构建类型 `ament_cmake`；这是已经迁移到 ROS 2 的参考实现。
+- [LICENSE](../ref/omnidirectional_four_wheeled_robot/LICENSE)：MIT，版权归 Koji Shibata；后续复用时保留许可与来源。
 
 本文记录的参考版本不等于远端最新版本；本次未拉取或修改上游。
 
 ### 用户既有运控库
 
-- 入口：[VehicleMotionControl README](../参考项目/VehicleMotionControl/README.md)。用户明确只参考其中适用于全向底盘的控制器和解算方法。
+- 入口：[VehicleMotionControl README](../ref/VehicleMotionControl/VehicleMotionControl/README.md)。用户明确只参考其中适用于全向底盘的控制器和解算方法。
 - 2026-10-13 查阅时 HEAD 为 `2290738898e62dcf13a11204d3735c44a4a22512`，存在本地未提交修改；当次结论以实际文件为准，不能只凭该提交重现全部所读内容。
 - 这是 C# / `netstandard2.0` 库；本项目仍采用 C++20。已完成静态阅读，尚未移植或在本项目运行其测试。可参考部分及轮组结构差异见 [ARCHITECTURE.md](ARCHITECTURE.md)。

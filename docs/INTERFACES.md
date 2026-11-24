@@ -1,6 +1,6 @@
 # 项目与参考接口、坐标
 
-更新日期：2026-11-09。当前模型以 `fc446df` 加工作区修改为准；下方单独保留原始模型参考项目接口，不可混用其中的旧轮名、轮位和轮半径。
+当前源码基准见 [PROGRESS.md](PROGRESS.md)。参考项目的轮序、几何和接口按各自模型解读。
 
 历史边界：`200fc25` 的八个运动关节均为 continuous，转向命令范围为 ±π，且当时没有自有控制器数组顺序。`063a827` 的 controllers.yaml 确定了轮序；2026-10-13 用户明确 ±120° 限位后，又同步修改了 URDF 关节类型和命令范围。以下描述当前定义。
 
@@ -21,7 +21,7 @@
 
 转向枢轴离地 0.225 m，轮心位于其正下方，平面位置重合。每个轮组只有一个滚动轮，配独立转向关节；不是模块内左右双轮差速转向结构。
 
-ros2_control 中 joint1 的 position 命令范围与机械限位共用 `steering_angle_limit` 参数，转向角速度上限为 π rad/s。joint2 声明 velocity 命令；当前轮组滚动线速度上限为 1.00 m/s，按 0.10 m 半径换算为 ±10 rad/s。两种关节均声明 position/velocity 状态接口。±120° 限位此前已核对 URDF 展开和 SDF 转换；轮速上限调整后已通过 Xacro 并核对四轮关节及命令接口为 ±10 rad/s，运行中的到位、超限及边界行为仍待验证。
+ros2_control 中 joint1 的 position 命令范围与机械限位共用 `steering_angle_limit`，转向角速度上限为 π rad/s。joint2 声明 velocity 命令。当前模型的滚动线速度上限为 0.80 m/s，按 0.10 m 半径换算，驱动关节命令范围为 ±8 rad/s。两种关节均声明 position/velocity 状态接口。转向限位的检查与运行验证状态见 [PROGRESS.md](PROGRESS.md)。
 
 ## 当前轮组配置类型
 
@@ -29,20 +29,20 @@ ros2_control 中 joint1 的 position 命令范围与机械限位共用 `steering
 
 | 字段 | 单位 | 配置含义 |
 | --- | --- | --- |
-| `x_m`、`y_m` | m | 转向轴在 base_link 下的平面位置；当前模型的转向轴与轮心在平面上重合 |
-| `radius_m` | m | 滚动轮半径，供线速度与驱动关节角速度换算 |
-| `steering_min_rad`、`steering_max_rad` | rad | 转向关节机械角度下限、上限 |
-| `max_speed_mps` | m/s | 沿滚动方向的线速度幅值上限，同时适用于正转、反转 |
-| `max_steering_speed_rad_s` | rad/s | 转向角速度幅值上限 |
-| `max_steering_accel_rad_s2` | rad/s² | 讨论中约定转向加速、减速共用的角加速度幅值上限 |
-| `max_drive_accel_mps2` | m/s² | 驱动滚动速度幅值增加时的加速度上限 |
-| `max_drive_decel_mps2` | m/s² | 驱动滚动速度幅值减小时的减速度上限 |
+| `x`、`y` | m | 转向轴在 `base_link` 下的平面位置，当前模型中与轮心的平面位置重合 |
+| `radius` | m | 滚动轮半径，用于接入 ROS 时换算线速度与驱动关节角速度 |
+| `steer_min`、`steer_max` | rad | 有效转向角区间的下限与上限 |
+| `drive_speed` | m/s | 滚动线速度幅值上限，同时适用于正转和反转 |
+| `steer_speed` | rad/s | 转向角速度幅值上限，预留给舵角轨迹生成 |
+| `steer_accel` | rad/s² | 转向加减速共用的角加速度幅值上限，预留给舵角轨迹生成 |
+| `drive_accel` | m/s² | 驱动滚动速度幅值增加时的加速度上限 |
+| `drive_decel` | m/s² | 驱动滚动速度幅值减小时的减速度上限 |
 
-字段当前默认归零，没有实例化具体四轮配置。有效配置需要有限数值、正半径、正速度/加减速上限，以及有序的转角边界；接收配置时的校验尚未实现。驱动和转向加速度尚无已确定的数值，也没有周期目标生成逻辑使其生效。
+`WheelConfig` 各字段须由调用方填写。当前尚未装配实际四轮配置或实现加载校验。`brake()` 和 `track()` 已读取逐轮驱动加减速限值，具体数值和周期调用待确定。舵角速度和加速度字段目前未参与算法。
 
 算法内部与 ROS 关节接口统一使用弧度。人工配置或日志可使用度，但应显式转换；当前头文件尚无度/弧度转换函数。轮组滚动线速度使用 m/s，驱动关节命令使用 rad/s，换算关系为 `omega = speed / radius`。
 
-车体目标速度、实际轮组反馈和目标轮组命令属于不同的数据角色，尚未定义相应类型。当前四轮配置顺序应与下方控制器轮序一致；具体布局容器、输入输出类型和解算函数签名尚未定案。
+`BodyVelocity` 表示车体速度目标，`WheelState` 表示实测反馈，`WheelTarget` 表示舵角和滚动速度命令。四轮布局、反馈与命令按下方控制器轮序排列。`solve_ik()` 返回整组 `WheelGoal` 或无解。`DriveControl::step()` 已声明，`StepResult` 包含本周期命令和 `reachable`，后者仅表示整组逆解是否有解。完整接口见 [设计大纲](SWERVE_KINEMATICS_DESIGN.md#函数名与输入输出)。
 
 ## 当前 Gazebo 控制接口
 
@@ -100,11 +100,11 @@ ros2_control 中 joint1 的 position 命令范围与机械限位共用 `steering
 | `/camera/image` | `sensor_msgs/msg/Image` | Gazebo 经桥接 → 图像使用者 |
 | `/camera/camera_info` | `sensor_msgs/msg/CameraInfo` | Gazebo 经桥接 → 相机参数使用者 |
 
-来源：[逆解](../参考项目/omnidirectional_four_wheeled_robot/src/controller_kinematics.cpp)、[里程计](../参考项目/omnidirectional_four_wheeled_robot/src/odometry_publisher.cpp)、[桥配置](../参考项目/omnidirectional_four_wheeled_robot/config/gz_bridge.yaml)。桥配置中的激活项均为 GZ_TO_ROS；其中 `/FrontLaser/scan` 映射被注释，模型中的前后雷达实例也被注释，不能假设当前默认有激光数据。
+来源：[逆解](../ref/omnidirectional_four_wheeled_robot/src/controller_kinematics.cpp)、[里程计](../ref/omnidirectional_four_wheeled_robot/src/odometry_publisher.cpp)、[桥配置](../ref/omnidirectional_four_wheeled_robot/config/gz_bridge.yaml)。桥配置中的激活项均为 GZ_TO_ROS；其中 `/FrontLaser/scan` 映射被注释，模型中的前后雷达实例也被注释，不能假设当前默认有激光数据。
 
 ## 参考关节顺序与控制器
 
-命令数组顺序固定为 `[FR, RR, FL, RL]`，应与 [controllers.yaml](../参考项目/omnidirectional_four_wheeled_robot/config/controllers.yaml) 一致。JointState 消息由里程计按关节名称查找，不按接收数组的位置直接假设轮序。
+命令数组顺序固定为 `[FR, RR, FL, RL]`，应与 [controllers.yaml](../ref/omnidirectional_four_wheeled_robot/config/controllers.yaml) 一致。JointState 消息由里程计按关节名称查找，不按接收数组的位置直接假设轮序。
 
 | 数组索引 | 参考前缀 | 转向关节 | 驱动关节 | 轮心相对机体中心的 (x, y)，m |
 | --- | --- | --- | --- | --- |
@@ -113,7 +113,7 @@ ros2_control 中 joint1 的 position 命令范围与机械限位共用 `steering
 | 2 | FL | FLwheel_joint1 | FLwheel_joint2 | (-0.375, +0.375) |
 | 3 | RL | RLwheel_joint1 | RLwheel_joint2 | (-0.375, -0.375) |
 
-轮半径为 0.2 m；joint1 绕局部 z 轴转向，joint2 绕局部 y 轴滚动。依据：[几何常量](../参考项目/omnidirectional_four_wheeled_robot/include/omnidirectional_four_wheeled_robot/robot_geometry.hpp)、[机器人 Xacro](../参考项目/omnidirectional_four_wheeled_robot/urdf/robot.urdf.xacro)、[轮组 Xacro](../参考项目/omnidirectional_four_wheeled_robot/urdf/wheel.urdf.xacro)。前缀与常用“前右/前左”方位不能直接对应，算法应先按源码坐标理解。
+轮半径为 0.2 m；joint1 绕局部 z 轴转向，joint2 绕局部 y 轴滚动。依据：[几何常量](../ref/omnidirectional_four_wheeled_robot/include/omnidirectional_four_wheeled_robot/robot_geometry.hpp)、[机器人 Xacro](../ref/omnidirectional_four_wheeled_robot/urdf/robot.urdf.xacro)、[轮组 Xacro](../ref/omnidirectional_four_wheeled_robot/urdf/wheel.urdf.xacro)。前缀与常用“前右/前左”方位不能直接对应，算法应先按源码坐标理解。
 
 参考控制器类型为 `joint_state_broadcaster/JointStateBroadcaster`、`position_controllers/JointGroupPositionController`、`velocity_controllers/JointGroupVelocityController`。这是参考配置的事实，不代表已确认它们在目标版本中可直接使用。
 

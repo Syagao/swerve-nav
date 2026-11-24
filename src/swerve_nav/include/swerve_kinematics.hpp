@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <optional>
 
 namespace swerve_nav {
 
@@ -18,7 +19,8 @@ struct WheelConfig {
     double drive_decel; // 滚动减速度，m/s²
 };
 
-using WheelLayout = std::array<WheelConfig, 4>;
+template <typename T> using Wheels = std::array<T, 4>;
+using WheelLayout = Wheels<WheelConfig>;
 
 struct BodyVelocity {
     double vx{}; // 车体前向速度，m/s，向前为正
@@ -34,6 +36,11 @@ struct WheelVelocity {
 struct WheelTarget {
     double steer_angle; // 目标舵角，rad，绕转向轴逆时针为正
     double drive_speed; // 目标滚动线速度，m/s，正负表示滚动方向
+};
+
+struct WheelState {
+    double angle; // 实测舵角，rad
+    double speed; // 实测滚动线速度，m/s，正负表示滚动方向
 };
 
 enum class Branch {
@@ -58,10 +65,38 @@ struct WheelGoal {
     Branch branch;      // 本次选解采用的分支
 };
 
-std::array<WheelVelocity, 4> compute_wheel_velocities(
+Wheels<WheelVelocity> compute_wheel_velocities(
     const WheelLayout &layout, const BodyVelocity &velocity);
 
-std::array<WheelTarget, 4> inverse_kinematics(
-    const WheelLayout &layout, const BodyVelocity &velocity);
+std::optional<Wheels<WheelGoal>> solve_ik(const WheelLayout &layout, const BodyVelocity &body,
+    const Wheels<IkHint> &hints, const IkParams &ik);
+
+struct StepResult {
+    bool reachable;          // 本周期的整组逆解是否有解
+    Wheels<WheelTarget> cmd; // 本周期实际下发的四轮命令
+};
+
+class DriveControl {
+  public:
+    DriveControl(const WheelLayout &layout, const IkParams &ik, double stop_tol, double angle_tol);
+
+    StepResult step(const BodyVelocity &body, const Wheels<WheelState> &fb, double dt);
+
+  private:
+    enum class Phase {
+        WaitingForStop,
+        Aligning,
+        Tracking,
+    };
+
+    WheelLayout layout_;
+    IkParams ik_;
+    double stop_tol_;  // 实测轮速的停稳容差，m/s
+    double angle_tol_; // 实测舵角的到位容差，rad
+
+    std::optional<Wheels<WheelTarget>> prev_; // 上一周期下发的命令
+    Wheels<Branch> branches_{};               // 各轮上次选中的分支，初始为 None
+    Phase phase_ = Phase::WaitingForStop;
+};
 
 } // namespace swerve_nav

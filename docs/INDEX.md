@@ -2,7 +2,7 @@
 
 初始化日期：2026-10-08。目标目录：`/home/syagao/agv_sim_ws`。
 
-本知识库保存项目目标、当前实现、参考实现和待确认信息。2026-11-09 核对基准为 `fc446df` 加当前未提交修改：已有模型显示、Gazebo 关节控制链路和 C++20 算法库构建目标；用户已反馈直接关节命令能使小车正常运动。头文件已定义 `WheelConfig`，算法与节点 `.cpp` 仍为空，导航尚未接入。
+本知识库保存项目目标、当前实现、参考实现和待确认信息。当前处于四轮逆解与周期控制开发阶段，源码状态、编译结果和未完成事项见 [PROGRESS.md](PROGRESS.md)。
 
 初始化时“当前尚无自有 ROS 包”、2026-10-09 `200fc25` 阶段“尚无 Gazebo 入口和 C++ 目标”的记录均为历史基线，后续变化及验证边界见 [PROGRESS.md](PROGRESS.md)。下列文档分别标注当前项目与参考实现，不能把参考功能视为本项目已实现。当前算法学习采用用户自行编写、助手逐步指导的方式，见 [DECISIONS.md](DECISIONS.md) 的 D-012。
 
@@ -11,11 +11,12 @@
 | [OVERVIEW.md](OVERVIEW.md) | 目标、环境约束、目录现状、参考版本 | 首次了解项目 |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | 当前显示/仿真链路、算法库构建及参考算法职责 | 分析模块或阅读源码 |
 | [INTERFACES.md](INTERFACES.md) | 当前模型坐标、转向限位、控制器命令、传感器与参考接口 | 对接或比较算法 |
+| [SWERVE_KINEMATICS_DESIGN.md](SWERVE_KINEMATICS_DESIGN.md) | 整组逆解、周期控制接口、阶段转换与验收 | 实现或验证底盘控制 |
 | [DECISIONS.md](DECISIONS.md) | 用户已确定的约束及尚未决定的事项 | 提方案或做技术选择 |
 | [ISSUES.md](ISSUES.md) | 当前问题、退出日志解释及参考疑点的处理边界 | 用户要求检查相关问题时 |
 | [PROGRESS.md](PROGRESS.md) | 当前完成项、未开展事项、历史边界 | 每次任务开始时 |
 
-协作与编码规范统一维护在 [AGENTS.md](../AGENTS.md)，已完整整合原协作参考和 Karpathy 准则，无需另外读取源文件。参考目录现名为 `参考项目/`，九个项目的用途与本地基准统一记录在 [OVERVIEW.md](OVERVIEW.md)。
+协作与编码规范统一维护在 [AGENTS.md](../AGENTS.md)，已完整整合原协作参考和 Karpathy 准则，无需另外读取源文件。当前参考目录是 `ref/`，九份参考的用途与历史基准见 [OVERVIEW.md](OVERVIEW.md)。
 
 ## 记录约定
 

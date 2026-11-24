@@ -1,10 +1,10 @@
 # 项目与参考架构
 
-更新日期：2026-11-09。当前实现以 `fc446df` 加工作区修改为准；参考版本见 [OVERVIEW.md](OVERVIEW.md)。2026-10-09 的 `200fc25` 快照只有模型显示，没有 Gazebo 入口和控制器 YAML，属于历史基线。
+当前实现的源码基准见 [PROGRESS.md](PROGRESS.md)，历史参考版本见 [OVERVIEW.md](OVERVIEW.md)。
 
 ## 当前项目：模型显示
 
-当前只有一个自有包 `swerve_nav`，包名不等于节点名。显示与仿真入口均在此包内；C++ 节点文件仍为空，尚无可执行节点目标。
+当前只有一个自有包 `swerve_nav`。显示与仿真入口均在此包内，运动学 ROS 节点及其构建目标待接入。
 
 | 当前文件 | 已实施职责 |
 | --- | --- |
@@ -32,9 +32,9 @@
 
 已建立 `swerve_kinematics` 静态库目标，源文件为 [src/swerve_kinematics.cpp](../src/swerve_nav/src/swerve_kinematics.cpp)，PUBLIC 头文件搜索路径为包内 `include/`；使用扁平头文件路径 [include/swerve_kinematics.hpp](../src/swerve_nav/include/swerve_kinematics.hpp)。当前仅供包内构建，没有库/头文件安装和对外导出，也没有新增算法依赖。
 
-头文件当前已定义 `swerve_nav::WheelConfig`，保存一个单滚动轮转向模块的几何和运动约束，具体字段见 [轮组配置](INTERFACES.md#当前轮组配置类型)。算法 `.cpp` 和 [节点 .cpp](../src/swerve_nav/src/swerve_kinematics_node.cpp) 仍为空；当前没有解算函数、参数校验、加减速目标生成或节点可执行目标。
+纯 C++ 算法先计算转向轴速度，再按舵角限位与分支滞回选解，最后对四轮统一限速。周期辅助函数已写出换向停车判断、共同减速、对齐限速和跟踪系数计算。`DriveControl` 的构造函数与 `step()` 已声明，周期编排待实现。接口与阶段转换见 [设计大纲](SWERVE_KINEMATICS_DESIGN.md)，当前编译结果见 [PROGRESS.md](PROGRESS.md)。
 
-讨论中的分工是：纯 C++ 算法通过参数接收布局、整车目标速度和轮组反馈；节点负责模型与配置解析、ROS 通信及周期调用。机械参数从同一份展开后的 `robot_description` 提取，关节配对、轮序与控制参数单独配置，是已讨论但尚未实现的方案；URDF 解析方式、类型接口及 `/cmd_vel` 消息类型尚未定案。算法和节点的推进方式见 [DECISIONS.md](DECISIONS.md)。
+计划由节点从展开后的 `robot_description` 与控制配置装配四轮布局，按关节名收集反馈，调用纯 C++ 的 `DriveControl::step()`，再做单位换算和命令下发。ROS 解析方式及 `/cmd_vel` 消息类型待定。算法和节点的推进顺序见 [DECISIONS.md](DECISIONS.md)。
 
 ## 用户运控库的参考范围
 
@@ -42,10 +42,10 @@
 
 | 参考入口 | 可参考职责 |
 | --- | --- |
-| [MultiSteerKinematics.cs](../参考项目/VehicleMotionControl/Chassis/MultiSteer/MultiSteerKinematics.cs) | 车体速度到各转向轴处速度向量 |
-| [MultiSteerSetpointGenerator.cs](../参考项目/VehicleMotionControl/Chassis/MultiSteer/MultiSteerSetpointGenerator.cs) | 限位内正反轮向选解、分支滞回、整组限速、减速与转向到位流程 |
-| [MultiSteerForwardKinematics.cs](../参考项目/VehicleMotionControl/Chassis/MultiSteer/MultiSteerForwardKinematics.cs) | 轮组反馈到车体速度估计，供后续里程计阶段参考 |
-| [PoseTrackingController.cs](../参考项目/VehicleMotionControl/Control/Omnidirectional/PoseTrackingController.cs) | 轨迹与位姿反馈到整车速度，供后续轨迹跟踪阶段参考 |
+| [MultiSteerKinematics.cs](../ref/VehicleMotionControl/VehicleMotionControl/Chassis/MultiSteer/MultiSteerKinematics.cs) | 车体速度到各转向轴处速度向量 |
+| [MultiSteerSetpointGenerator.cs](../ref/VehicleMotionControl/VehicleMotionControl/Chassis/MultiSteer/MultiSteerSetpointGenerator.cs) | 限位内正反轮向选解、分支滞回、整组限速、减速与转向到位流程 |
+| [MultiSteerForwardKinematics.cs](../ref/VehicleMotionControl/VehicleMotionControl/Chassis/MultiSteer/MultiSteerForwardKinematics.cs) | 轮组反馈到车体速度估计，供后续里程计阶段参考 |
+| [PoseTrackingController.cs](../ref/VehicleMotionControl/VehicleMotionControl/Control/Omnidirectional/PoseTrackingController.cs) | 轨迹与位姿反馈到整车速度，供后续轨迹跟踪阶段参考 |
 
 当前仿真轮组为单转向关节加单滚动轮，对应旧库的 `SteerWheel`；`DiffSteerWheelAllocator` 针对一个模块内的左右双驱动轮，不适用于当前模型。旧库模块滚动速度单位为 m/s，当前驱动关节命令为 rad/s，接入时需按轮半径转换。旧库已有验证记录不能替代本项目 C++ 移植及 Gazebo 验证。
 
@@ -53,14 +53,14 @@
 
 | 参考文件 | 职责 |
 | --- | --- |
-| [robot.urdf.xacro](../参考项目/omnidirectional_four_wheeled_robot/urdf/robot.urdf.xacro) | 组合机体、四轮、传感器和 ros2_control 配置 |
-| [wheel.urdf.xacro](../参考项目/omnidirectional_four_wheeled_robot/urdf/wheel.urdf.xacro) | 每个轮组的转向/驱动关节、几何、惯量和控制接口 |
-| [empty.sdf](../参考项目/omnidirectional_four_wheeled_robot/worlds/empty.sdf) | 地面、光照、物理、场景、传感器与 IMU 系统 |
-| [gazebo.launch.py](../参考项目/omnidirectional_four_wheeled_robot/launch/gazebo.launch.py) | 展开 Xacro，启动 Gazebo、状态发布器、桥接、控制器、运动学和里程计；可选 GUI/RViz |
-| [display.launch.py](../参考项目/omnidirectional_four_wheeled_robot/launch/display.launch.py) | 独立模型显示入口，与物理仿真入口分开 |
-| [controller_kinematics.cpp](../参考项目/omnidirectional_four_wheeled_robot/src/controller_kinematics.cpp) | 机体速度到四轮转角/轮速的逆运动学节点 |
-| [odometry_publisher.cpp](../参考项目/omnidirectional_four_wheeled_robot/src/odometry_publisher.cpp) | 实测关节状态到平面速度、位姿积分、里程计及 TF |
-| [robot_geometry.hpp](../参考项目/omnidirectional_four_wheeled_robot/include/omnidirectional_four_wheeled_robot/robot_geometry.hpp) | C++ 正逆运动学共用的轮位、半径、顺序常量 |
+| [robot.urdf.xacro](../ref/omnidirectional_four_wheeled_robot/urdf/robot.urdf.xacro) | 组合机体、四轮、传感器和 ros2_control 配置 |
+| [wheel.urdf.xacro](../ref/omnidirectional_four_wheeled_robot/urdf/wheel.urdf.xacro) | 每个轮组的转向/驱动关节、几何、惯量和控制接口 |
+| [empty.sdf](../ref/omnidirectional_four_wheeled_robot/worlds/empty.sdf) | 地面、光照、物理、场景、传感器与 IMU 系统 |
+| [gazebo.launch.py](../ref/omnidirectional_four_wheeled_robot/launch/gazebo.launch.py) | 展开 Xacro，启动 Gazebo、状态发布器、桥接、控制器、运动学和里程计；可选 GUI/RViz |
+| [display.launch.py](../ref/omnidirectional_four_wheeled_robot/launch/display.launch.py) | 独立模型显示入口，与物理仿真入口分开 |
+| [controller_kinematics.cpp](../ref/omnidirectional_four_wheeled_robot/src/controller_kinematics.cpp) | 机体速度到四轮转角/轮速的逆运动学节点 |
+| [odometry_publisher.cpp](../ref/omnidirectional_four_wheeled_robot/src/odometry_publisher.cpp) | 实测关节状态到平面速度、位姿积分、里程计及 TF |
+| [robot_geometry.hpp](../ref/omnidirectional_four_wheeled_robot/include/omnidirectional_four_wheeled_robot/robot_geometry.hpp) | C++ 正逆运动学共用的轮位、半径、顺序常量 |
 
 ## 参考数据流
 
@@ -80,7 +80,7 @@ flowchart LR
 
 参考 launch 由 `gz_ros2_control` 在 Gazebo 中创建控制管理器，模型生成进程退出后调起 joint_state_broadcaster，再调起位置和速度控制器。事件触发并不等于所有前置条件已验证成功。机器人和示例球体均由 `ros_gz_sim/create` 生成。
 
-另有 [spawner_sphere.cpp](../参考项目/omnidirectional_four_wheeled_robot/src/spawner_sphere.cpp) 可执行程序，使用 ROS SpawnEntity 服务；主 Gazebo launch 并未启动这个自定义程序，不应混淆两条生成路径。
+另有 [spawner_sphere.cpp](../ref/omnidirectional_four_wheeled_robot/src/spawner_sphere.cpp) 可执行程序，使用 ROS SpawnEntity 服务；主 Gazebo launch 并未启动这个自定义程序，不应混淆两条生成路径。
 
 ## 运动学阅读要点
 
