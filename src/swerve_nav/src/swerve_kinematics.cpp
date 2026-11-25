@@ -170,4 +170,78 @@ std::optional<Wheels<WheelGoal>> solve_ik(const WheelLayout &layout, const BodyV
     return goals;
 }
 
+DriveControl::DriveControl(
+    const WheelLayout &layout, const IkParams &ik, double stop_tol, double angle_tol)
+    : layout_(layout), ik_(ik), stop_tol_(stop_tol), angle_tol_(angle_tol) {}
+
+StepResult DriveControl::step(const BodyVelocity &body, const Wheels<WheelState> &fb, double dt) {
+    if (!prev_) {
+        Wheels<WheelTarget> initial;
+        for (std::size_t i = 0; i < fb.size(); ++i) {
+            initial[i] = {fb[i].angle, fb[i].speed};
+        }
+        prev_ = initial;
+    }
+    const auto &prev = *prev_;
+    const auto save = [this](const Wheels<WheelTarget> &cmd, bool reachable) {
+        prev_ = cmd;
+        return StepResult{.reachable = reachable, .cmd = cmd};
+    };
+    const auto stopped = [](const WheelTarget &wheel) { return wheel.drive_speed == 0.0; };
+    Wheels<IkHint> hints;
+    for (std::size_t i = 0; i < hints.size(); ++i) {
+        hints[i] = {fb[i].angle, prev[i].steer_angle, branches_[i]};
+    }
+    const auto solved = solve_ik(layout_, body, hints, ik_);
+    if (!solved) {
+        phase_ = Phase::WaitingForStop;
+        return save(brake(layout_, prev, dt), false);
+    }
+    Wheels<WheelTarget> goal;
+    for (std::size_t i = 0; i < goal.size(); ++i) {
+        goal[i] = (*solved)[i].target;
+        branches_[i] = (*solved)[i].branch;
+    }
+    if (std::all_of(goal.begin(), goal.end(), stopped)) {
+        phase_ = Phase::WaitingForStop;
+        return save(brake(layout_, prev, dt), true);
+    }
+    const bool cmd_stopped = std::all_of(prev.begin(), prev.end(), stopped);
+    const bool fb_stopped = std::all_of(fb.begin(), fb.end(),
+        [this](const WheelState &wheel) { return std::abs(wheel.speed) <= stop_tol_; });
+    const double cap = align_scale(goal, fb);
+    if (phase_ == Phase::Tracking &&
+        (cmd_stopped || needs_stop(prev, goal, fb, stop_tol_) || cap == 0.0)) {
+        phase_ = Phase::WaitingForStop;
+    }
+    if (phase_ == Phase::WaitingForStop) {
+        if (!cmd_stopped || !fb_stopped) {
+            return save(brake(layout_, prev, dt), true);
+        }
+        phase_ = Phase::Aligning;
+    }
+
+    if (phase_ == Phase::Aligning) {
+        if (!fb_stopped) {
+            return save(prev, true);
+        }
+        auto align_cmd = goal;
+        bool ready = true;
+        for (std::size_t i = 0; i < goal.size(); ++i) {
+            if (!stopped(goal[i]) && std::abs(goal[i].steer_angle - fb[i].angle) > angle_tol_) {
+                ready = false;
+            }
+            align_cmd[i].drive_speed = 0.0;
+        }
+        if (!ready) {
+            return save(align_cmd, true);
+        }
+        phase_ = Phase::Tracking;
+    }
+    if (const auto cmd = track(layout_, prev, goal, cap, dt)) {
+        return save(*cmd, true);
+    }
+    return save(brake(layout_, prev, dt), true);
+}
+
 } // namespace swerve_nav
