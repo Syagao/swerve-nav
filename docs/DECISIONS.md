@@ -18,14 +18,14 @@
 | D-010 | 参考用户既有库中适用于全向底盘的控制和解算部分 | 当前入口为 `ref/VehicleMotionControl`，参考范围见 [ARCHITECTURE.md](ARCHITECTURE.md) |
 | D-011 | 先建立算法库构建配置、优先实现解算，后接 ROS 节点 | 头文件采用扁平 `include/swerve_kinematics.hpp`，静态库与解算进展见 [PROGRESS.md](PROGRESS.md) |
 | D-012 | 当前算法实现由用户自行编写，助手逐步指导 | 用户于 2026-10-14 明确要求“指导我写，不用你直接写”，并强调 C++20。后续每次解释一小部分的原理、类型/接口和验证方式，根据用户实际代码反馈；未经新的明确授权，不代写算法文件。讨论中的 `std::span` 等写法不是已经实现或固定的 API |
-| D-013 | 2026-11-06 曾将轮组滚动线速度上限设为 1.00 m/s | 历史工作区设置。当前模型采用 0.80 m/s，见 [INTERFACES.md](INTERFACES.md) |
+| D-013 | 轮组滚动线速度上限为 1.0 m/s，加减速上限均为 1.0 m/s² | 2026-11-25 用户指定。驱动关节限值换算见 [INTERFACES.md](INTERFACES.md) |
 | D-014 | 后续按任务参考 `ref/` 中的项目 | 九份本地参考的用途、历史版本和适用边界见 [OVERVIEW.md](OVERVIEW.md)。参考默认只读 |
 
 ## 尚未决定
 
 - 初始化时未确定的包名、轮名、base_link 基准和最小仿真入口，已有当前源码依据，分别见 [OVERVIEW.md](OVERVIEW.md)、[INTERFACES.md](INTERFACES.md)。后续是否拆包仍未决定。
 - 自有 world、传感器系统与数据桥接，以及质量、摩擦、阻尼等动力学参数的进一步标定。
-- 机械参数提取的具体实现、控制容差与加减速数值，以及未来 `/cmd_vel` 使用 Twist 还是 TwistStamped。当前算法 API 见 [设计大纲](SWERVE_KINEMATICS_DESIGN.md)。
+- 机械参数提取的具体实现、控制容差、转向初值的仿真标定，以及未来 `/cmd_vel` 使用 Twist 还是 TwistStamped。当前算法 API 见 [设计大纲](SWERVE_KINEMATICS_DESIGN.md)。
 - 正运动学与里程计方案、轨迹跟踪接入 Nav2 的接口及算法比较方式。
 - 定位方案、规划器与控制器选择、评价场景和误差阈值。
 

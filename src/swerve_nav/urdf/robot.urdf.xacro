@@ -6,7 +6,7 @@
 <!-- |    This is a URDF file that describes an omnidirectional                   | -->
 <!-- |    four-wheeled robot for ROS 2 users.                                     | -->
 <!-- ===========================================================================  -->
-<robot name="swerve_robot" xmlns:xacro="http://ros.org/wiki/xacro">
+<robot name="swerve_robot" version="1.2" xmlns:xacro="http://ros.org/wiki/xacro">
 <!-- Simplified indoor research platform; SI units. This is not a replica of a commercial robot.
      Size references: Jackal uses a 0.098 m wheel radius; Ranger Mini provides a 4WS layout.
      https://docs.clearpathrobotics.com/docs/ros/config/yaml/platform/extras/
@@ -48,8 +48,11 @@
 <xacro:property name="drive_effort_limit" value="3.0"/>
 <xacro:property name="steering_angle_limit" value="${2 * pi / 3}"/>
 <xacro:property name="steering_velocity_limit" value="${pi}"/>
-<!-- Wheel rim speed limit: 0.8 m/s. Actual acceleration limits belong to the future controller. -->
-<xacro:property name="max_wheel_linear_speed" value="0.80"/>
+<xacro:property name="steering_acceleration_limit" value="${2 * pi}"/>
+<!-- Wheel rim limits in m/s and m/s². Joint limits use rad/s and rad/s². -->
+<xacro:property name="max_wheel_linear_speed" value="1.0"/>
+<xacro:property name="max_wheel_linear_acceleration" value="1.0"/>
+<xacro:property name="max_wheel_linear_deceleration" value="1.0"/>
 <xacro:property name="velocity_limit" value="${max_wheel_linear_speed / wheel_radius}"/>
 
 <!-- UST-10LX-sized housing only; the simulated 360-degree scan is not a UST-10LX sensor model.

@@ -21,7 +21,7 @@
 
 转向枢轴离地 0.225 m，轮心位于其正下方，平面位置重合。每个轮组只有一个滚动轮，配独立转向关节；不是模块内左右双轮差速转向结构。
 
-ros2_control 中 joint1 的 position 命令范围与机械限位共用 `steering_angle_limit`，转向角速度上限为 π rad/s。joint2 声明 velocity 命令。当前模型的滚动线速度上限为 0.80 m/s，按 0.10 m 半径换算，驱动关节命令范围为 ±8 rad/s。两种关节均声明 position/velocity 状态接口。转向限位的检查与运行验证状态见 [PROGRESS.md](PROGRESS.md)。
+ros2_control 中 joint1 的 position 命令范围与机械限位共用 `steering_angle_limit`。URDF 声明转向角速度上限为 π rad/s，转向加减速上限共用 `steering_acceleration_limit`，值为 2π rad/s²。joint2 声明 velocity 命令。当前模型的滚动线速度上限为 1.0 m/s，滚动加速度和减速度上限均为 1.0 m/s²。按 0.10 m 半径换算，驱动命令范围为 ±10 rad/s，URDF 1.2 的驱动关节加速度和减速度上限均为 10 rad/s²。两种关节均声明 position/velocity 状态接口。验证状态见 [PROGRESS.md](PROGRESS.md)。
 
 ## 当前轮组配置类型
 
@@ -38,7 +38,7 @@ ros2_control 中 joint1 的 position 命令范围与机械限位共用 `steering
 | `drive_accel` | m/s² | 驱动滚动速度幅值增加时的加速度上限 |
 | `drive_decel` | m/s² | 驱动滚动速度幅值减小时的减速度上限 |
 
-`WheelConfig` 各字段须由调用方填写。当前尚未装配实际四轮配置或实现加载校验。`brake()` 和 `track()` 已读取逐轮驱动加减速限值，具体数值和周期调用待确定。舵角速度和加速度字段目前未参与算法。
+`WheelConfig` 各字段须由调用方填写。模型已声明驱动加减速限值，ROS 接入时需将角加速度按轮半径换算为线加速度，传给逐轮配置。`brake()` 和 `track()` 读取该配置。舵角速度和加速度字段目前未参与算法。
 
 算法内部与 ROS 关节接口统一使用弧度。人工配置或日志可使用度，但应显式转换；当前头文件尚无度/弧度转换函数。轮组滚动线速度使用 m/s，驱动关节命令使用 rad/s，换算关系为 `omega = speed / radius`。
 

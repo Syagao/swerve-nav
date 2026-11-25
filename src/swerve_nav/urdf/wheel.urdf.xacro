@@ -120,7 +120,9 @@
 			<parent link="${parent}"/>
 			<child link="${suffix}_link1"/>
 			<limit lower="-${steering_angle_limit}" upper="${steering_angle_limit}"
-			       effort="${steering_effort_limit}" velocity="${steering_velocity_limit}"/>
+			       effort="${steering_effort_limit}" velocity="${steering_velocity_limit}"
+			       acceleration="${steering_acceleration_limit}"
+			       deceleration="${steering_acceleration_limit}"/>
 			<dynamics damping="${steering_damping}" friction="0"/>
 		</joint>
 
@@ -130,7 +132,9 @@
 			<axis xyz="0. 1. 0."/>
 			<parent link="${suffix}_link1"/>
 			<child link="${suffix}_link2"/>
-			<limit effort="${drive_effort_limit}" velocity="${velocity_limit}"/>
+			<limit effort="${drive_effort_limit}" velocity="${velocity_limit}"
+			       acceleration="${max_wheel_linear_acceleration / wheel_radius}"
+			       deceleration="${max_wheel_linear_deceleration / wheel_radius}"/>
 			<dynamics damping="${drive_damping}" friction="0"/>
 		</joint>
 
