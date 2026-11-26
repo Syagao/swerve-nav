@@ -92,6 +92,16 @@ def generate_launch_description():
         ],
     )
 
+    swerve_kinematics_node = Node(
+        package='swerve_nav',
+        executable='swerve_kinematics_node',
+        output='screen',
+        parameters=[{
+            'robot_description': ParameterValue(robot_xml, value_type=str),
+            'use_sim_time': True,
+        }],
+    )
+
     def after_spawn(event, context):
         if event.returncode != 0:
             return [
@@ -106,7 +116,7 @@ def generate_launch_description():
                 LogError(msg='Controller activation failed; stopping simulation.'),
                 Shutdown(reason='Controller activation failed'),
             ]
-        return []
+        return [swerve_kinematics_node]
 
     return LaunchDescription([
         DeclareLaunchArgument(

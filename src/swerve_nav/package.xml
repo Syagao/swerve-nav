@@ -12,6 +12,12 @@
   <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>angles</depend>
+  <depend>geometry_msgs</depend>
+  <depend>rclcpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>urdf</depend>
 
   <!-- Model parsing, visualization and Gazebo integration. -->
   <exec_depend>ament_index_python</exec_depend>
