@@ -119,6 +119,7 @@ class SwerveKinematicsNode : public rclcpp::Node {
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr steering_pub_;
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr drive_pub_;
     rclcpp::TimerBase::SharedPtr control_timer_;
+    std::optional<rclcpp::Time> last_cmd_vel_time_;
 
   private:
     void on_joint_state(const sensor_msgs::msg::JointState &msg);
@@ -171,10 +172,12 @@ void SwerveKinematicsNode::on_cmd_vel(const geometry_msgs::msg::Twist &msg) {
     }
 
     body_command_ = command;
+    last_cmd_vel_time_ = now();
 }
 
 void SwerveKinematicsNode::on_control_tick() {
-    if (!body_command_ || !wheel_feedback_) {
+    constexpr double cmd_vel_timeout_sec = 0.5;
+    if (!wheel_feedback_) {
         return;
     }
     const auto current_time = now();
@@ -187,7 +190,14 @@ void SwerveKinematicsNode::on_control_tick() {
     if (dt <= 0.0) {
         return;
     }
-    const StepResult result = drive_control_.step(*body_command_, *wheel_feedback_, dt);
+    bool command_fresh = false;
+    if (last_cmd_vel_time_) {
+        const double command_age = (current_time - *last_cmd_vel_time_).seconds();
+        command_fresh = command_age >= 0.0 && command_age < cmd_vel_timeout_sec;
+    }
+    const BodyVelocity target = command_fresh ? *body_command_ : BodyVelocity{};
+    const bool center_after_stop = !command_fresh;
+    const StepResult result = drive_control_.step(target, *wheel_feedback_, dt, center_after_stop);
     std_msgs::msg::Float64MultiArray steering_msg;
     std_msgs::msg::Float64MultiArray drive_msg;
     steering_msg.data.resize(result.cmd.size());

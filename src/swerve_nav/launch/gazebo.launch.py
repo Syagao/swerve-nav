@@ -15,6 +15,7 @@ from launch.actions import (
     RegisterEventHandler,
     Shutdown,
 )
+from launch.conditions import IfCondition
 from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import IfElseSubstitution, LaunchConfiguration
@@ -102,6 +103,13 @@ def generate_launch_description():
         }],
     )
 
+    keyboard_teleop = Node(
+        package='swerve_nav',
+        executable='keyboard_teleop',
+        output='screen',
+        condition=IfCondition(LaunchConfiguration('teleop')),
+    )
+
     def after_spawn(event, context):
         if event.returncode != 0:
             return [
@@ -116,12 +124,17 @@ def generate_launch_description():
                 LogError(msg='Controller activation failed; stopping simulation.'),
                 Shutdown(reason='Controller activation failed'),
             ]
-        return [swerve_kinematics_node]
+        return [swerve_kinematics_node, keyboard_teleop]
 
     return LaunchDescription([
         DeclareLaunchArgument(
             'gui', default_value='true',
             description='Open Gazebo GUI; false runs only the simulation server.',
+        ),
+        DeclareLaunchArgument(
+            'teleop',
+            default_value=LaunchConfiguration('gui'),
+            description='Open the keyboard control window.',
         ),
         RegisterEventHandler(OnProcessExit(
             target_action=spawn_robot, on_exit=after_spawn,

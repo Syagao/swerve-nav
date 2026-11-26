@@ -173,7 +173,8 @@ DriveControl::DriveControl(
     const WheelLayout &layout, const IkParams &ik, double stop_tol, double angle_tol)
     : layout_(layout), ik_(ik), stop_tol_(stop_tol), angle_tol_(angle_tol) {}
 
-StepResult DriveControl::step(const BodyVelocity &body, const Wheels<WheelState> &fb, double dt) {
+StepResult DriveControl::step(
+    const BodyVelocity &body, const Wheels<WheelState> &fb, double dt, bool center_after_stop) {
     if (!prev_) {
         Wheels<WheelTarget> initial;
         for (std::size_t i = 0; i < fb.size(); ++i) {
@@ -208,6 +209,16 @@ StepResult DriveControl::step(const BodyVelocity &body, const Wheels<WheelState>
     const bool cmd_stopped = std::all_of(prev.begin(), prev.end(), stopped);
     const bool fb_stopped = std::all_of(fb.begin(), fb.end(),
         [this](const WheelState &wheel) { return std::abs(wheel.speed) <= stop_tol_; });
+    if (std::all_of(goal.begin(), goal.end(), stopped)) {
+        phase_ = Phase::WaitingForStop;
+        auto cmd = brake(layout_, prev, dt);
+        if (center_after_stop && cmd_stopped && fb_stopped) {
+            for (auto &wheel : cmd) {
+                wheel.steer_angle = 0.0;
+            }
+        }
+        return save(cmd, true);
+    }
     const double cap = align_scale(goal, fb);
     if (phase_ == Phase::Tracking &&
         (cmd_stopped || needs_stop(prev, goal, fb, stop_tol_) || cap == 0.0)) {

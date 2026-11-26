@@ -80,7 +80,8 @@ class DriveControl {
   public:
     DriveControl(const WheelLayout &layout, const IkParams &ik, double stop_tol, double angle_tol);
 
-    StepResult step(const BodyVelocity &body, const Wheels<WheelState> &fb, double dt);
+    StepResult step(const BodyVelocity &body, const Wheels<WheelState> &fb, double dt,
+        bool center_after_stop = false);
 
   private:
     enum class Phase {

@@ -10,6 +10,7 @@ find_package(ament_cmake REQUIRED)
 find_package(angles REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(SDL2 REQUIRED CONFIG)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(urdf REQUIRED)
@@ -35,7 +36,17 @@ target_link_libraries(swerve_kinematics_node PRIVATE
   urdf::urdf
 )
 
-install(TARGETS swerve_kinematics_node DESTINATION lib/${PROJECT_NAME})
+add_executable(keyboard_teleop
+  src/keyboard_teleop.cpp
+)
+target_link_libraries(keyboard_teleop PRIVATE
+  SDL2::SDL2
+  angles::angles
+  geometry_msgs::geometry_msgs
+  rclcpp::rclcpp
+)
+
+install(TARGETS swerve_kinematics_node keyboard_teleop DESTINATION lib/${PROJECT_NAME})
 
 install(
   DIRECTORY urdf launch config
