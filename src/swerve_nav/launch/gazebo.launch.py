@@ -28,6 +28,7 @@ def generate_launch_description():
     pkg = get_package_share_directory('swerve_nav')
     ros_gz_sim = get_package_share_directory('ros_gz_sim')
     controllers_yaml = os.path.join(pkg, 'config', 'controllers.yaml')
+    swerve_yaml = os.path.join(pkg, 'config', 'swerve.yaml')
     robot_xml = xacro.process_file(
         os.path.join(pkg, 'urdf', 'robot.urdf.xacro'),
         mappings={'controllers_config': controllers_yaml},
@@ -97,7 +98,7 @@ def generate_launch_description():
         package='swerve_nav',
         executable='swerve_kinematics_node',
         output='screen',
-        parameters=[{
+        parameters=[swerve_yaml, {
             'robot_description': ParameterValue(robot_xml, value_type=str),
             'use_sim_time': True,
         }],
@@ -107,6 +108,7 @@ def generate_launch_description():
         package='swerve_nav',
         executable='keyboard_teleop',
         output='screen',
+        parameters=[swerve_yaml],
         condition=IfCondition(LaunchConfiguration('teleop')),
     )
 

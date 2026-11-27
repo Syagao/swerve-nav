@@ -6,6 +6,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <geometry_msgs/msg/twist.hpp>
 #include <memory>
 #include <optional>
@@ -91,10 +92,26 @@ WheelLayout load_layout(const std::string &robot_description) {
 
 class SwerveKinematicsNode : public rclcpp::Node {
   public:
-    SwerveKinematicsNode(const IkParams &ik, double stop_tol, double angle_tol)
+    SwerveKinematicsNode()
         : rclcpp::Node("swerve_kinematics"),
           layout_(load_layout(declare_parameter<std::string>("robot_description"))),
-          drive_control_(layout_, ik, stop_tol, angle_tol) {
+          drive_control_(layout_,
+              IkParams{
+                  .zero_speed = declare_parameter<double>("zero_speed_mps"),
+                  .switch_gap = angles::from_degrees(declare_parameter<double>("switch_gap_deg")),
+              },
+              declare_parameter<double>("stop_tol_mps"),
+              angles::from_degrees(declare_parameter<double>("angle_tol_deg"))),
+          cmd_vel_timeout_sec_(declare_parameter<double>("cmd_vel_timeout_sec")) {
+        const auto control_period =
+            std::chrono::milliseconds(declare_parameter<std::int64_t>("control_period_ms"));
+        if (control_period.count() <= 0) {
+            throw std::runtime_error("control_period_ms 必须大于零");
+        }
+        if (!std::isfinite(cmd_vel_timeout_sec_) || cmd_vel_timeout_sec_ <= 0.0) {
+            throw std::runtime_error("cmd_vel_timeout_sec 必须是有限的正数");
+        }
+
         joint_state_sub_ = create_subscription<sensor_msgs::msg::JointState>("/joint_states",
             rclcpp::SensorDataQoS(),
             [this](const sensor_msgs::msg::JointState &msg) { on_joint_state(msg); });
@@ -104,13 +121,13 @@ class SwerveKinematicsNode : public rclcpp::Node {
             "/steering_controller/commands", rclcpp::QoS(1));
         drive_pub_ = create_publisher<std_msgs::msg::Float64MultiArray>(
             "/drive_controller/commands", rclcpp::QoS(1));
-        control_timer_ =
-            create_timer(std::chrono::milliseconds(20), [this]() { on_control_tick(); });
+        control_timer_ = create_timer(control_period, [this]() { on_control_tick(); });
     }
 
   private:
     WheelLayout layout_;
     DriveControl drive_control_;
+    const double cmd_vel_timeout_sec_;
     std::optional<Wheels<WheelState>> wheel_feedback_;
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_sub_;
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
@@ -176,7 +193,6 @@ void SwerveKinematicsNode::on_cmd_vel(const geometry_msgs::msg::Twist &msg) {
 }
 
 void SwerveKinematicsNode::on_control_tick() {
-    constexpr double cmd_vel_timeout_sec = 0.5;
     if (!wheel_feedback_) {
         return;
     }
@@ -193,7 +209,7 @@ void SwerveKinematicsNode::on_control_tick() {
     bool command_fresh = false;
     if (last_cmd_vel_time_) {
         const double command_age = (current_time - *last_cmd_vel_time_).seconds();
-        command_fresh = command_age >= 0.0 && command_age < cmd_vel_timeout_sec;
+        command_fresh = command_age >= 0.0 && command_age < cmd_vel_timeout_sec_;
     }
     const BodyVelocity target = command_fresh ? *body_command_ : BodyVelocity{};
     const bool center_after_stop = !command_fresh;
@@ -216,14 +232,7 @@ void SwerveKinematicsNode::on_control_tick() {
 int main(int argc, char *argv[]) {
     rclcpp::init(argc, argv);
 
-    const swerve_nav::IkParams ik{
-        .zero_speed = 0.005,
-        .switch_gap = angles::from_degrees(5.0),
-    };
-    constexpr double stop_tol = 0.02; // m/s
-    const double angle_tol = angles::from_degrees(1.0);
-
-    auto node = std::make_shared<swerve_nav::SwerveKinematicsNode>(ik, stop_tol, angle_tol);
+    auto node = std::make_shared<swerve_nav::SwerveKinematicsNode>();
     rclcpp::spin(node);
 
     rclcpp::shutdown();

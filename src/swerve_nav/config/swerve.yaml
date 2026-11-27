@@ -1,0 +1,15 @@
+keyboard_teleop:
+  ros__parameters:
+    linear_speed_mps: 0.5
+    angular_speed_deg_per_sec: 45.0
+    angular_accel_deg_per_sec2: 45.0
+    publish_period_ms: 50
+
+swerve_kinematics:
+  ros__parameters:
+    control_period_ms: 20
+    cmd_vel_timeout_sec: 0.5
+    zero_speed_mps: 0.005
+    switch_gap_deg: 5.0
+    stop_tol_mps: 0.02
+    angle_tol_deg: 1.0

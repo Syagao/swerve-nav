@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <angles/angles.h>
 #include <chrono>
+#include <cstdint>
 #include <geometry_msgs/msg/twist.hpp>
 #include <optional>
 #include <rclcpp/rclcpp.hpp>
@@ -45,20 +46,26 @@ class KeyboardTeleop : public rclcpp::Node {
   public:
     KeyboardTeleop()
         : rclcpp::Node("keyboard_teleop"),
-          cmd_vel_pub_(create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", rclcpp::QoS(1))) {
+          cmd_vel_pub_(create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", rclcpp::QoS(1))),
+          linear_speed_(declare_parameter<double>("linear_speed_mps")),
+          angular_speed_(
+              angles::from_degrees(declare_parameter<double>("angular_speed_deg_per_sec"))),
+          angular_accel_limit_(
+              angles::from_degrees(declare_parameter<double>("angular_accel_deg_per_sec2"))),
+          command_period_(declare_parameter<std::int64_t>("publish_period_ms")) {
         command_timer_ = create_wall_timer(command_period_, [this]() { on_command_tick(); });
     }
 
   private:
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
-    const double linear_speed_ = 0.5;                       // m/s
-    const double angular_speed_ = angles::from_degrees(45); // rad/s
     std::set<char> pressed_keys_;
     bool stop_pending_ = false;
     rclcpp::TimerBase::SharedPtr command_timer_;
-    static constexpr auto command_period_ = std::chrono::milliseconds(50);
-    const double angular_accel_limit_ = angles::from_degrees(45.0); // rad/s²
-    double published_angular_speed_ = 0.0;                          // rad/s
+    double published_angular_speed_ = 0.0; // rad/s
+    const double linear_speed_;
+    const double angular_speed_;
+    const double angular_accel_limit_;
+    const std::chrono::milliseconds command_period_;
 
   private:
     void on_key_event(char key, bool pressed);
